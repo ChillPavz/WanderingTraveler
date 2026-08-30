@@ -57,6 +57,17 @@ public final class TitleTracker {
     private static boolean joinedThisSession;
 
     /**
+     * Was {@link #lastBiome} hidden by the underground rule rather than shown?
+     *
+     * <p>A biome the player never saw a title for is NOT "already handled". Standing in
+     * the stone under a Forest hides Forest, correctly; but climbing out into that same
+     * Forest is the arrival, and it was being swallowed because lastBiome already said
+     * Forest. The title then only appeared after leaving for another biome and coming
+     * back, which is exactly what was reported.
+     */
+    private static boolean hiddenUnderground;
+
+    /**
      * The connection this state belongs to, which is how a PORTAL is told from a REJOIN.
      *
      * <p>Going through a portal tears the client level down and builds a new one, so
@@ -78,6 +89,7 @@ public final class TitleTracker {
         lastBiome = null;
         lastDimension = null;
         joinedThisSession = false;
+        hiddenUnderground = false;
         recent.clear();
         TitleState.clear();
     }
@@ -149,7 +161,18 @@ public final class TitleTracker {
         }
 
         if (biome.equals(lastBiome)) {
-            return;
+            // Normally there is nothing to do: the biome has not changed. The exception
+            // is a biome that was HIDDEN underground, which the player has still never
+            // been shown, so surfacing into it has to count as the arrival.
+            //
+            // Gated on the cheap half of the underground test - one heightmap lookup -
+            // rather than on the full one. That is what keeps the promise in the comment
+            // this replaces: the 49 column sweep still does not run on every tick the
+            // player spends standing underground, only once they have actually climbed
+            // out. Without the gate this would be the most expensive path in the mod.
+            if (!hiddenUnderground || isBelowSurface(level, pos)) {
+                return;
+            }
         }
 
         // BEFORE lastBiome is updated, deliberately, unlike every other reason to
@@ -164,8 +187,10 @@ public final class TitleTracker {
 
         // Set before the rest, so a biome that was declined is not reconsidered on every
         // tick the player stands in it. That matters most for the underground rule,
-        // whose test walks a column of blocks.
+        // whose test walks a column of blocks. The one decline that must survive this is
+        // the underground one, which records itself in hiddenUnderground below.
         lastBiome = biome;
+        hiddenUnderground = false;
 
         // "You didn't travel anywhere." The biome you spawn into is not a discovery.
         if (firstSinceJoin && TravelerConfig.hideOnWorldJoin) {
@@ -179,6 +204,11 @@ public final class TitleTracker {
         if (TravelerConfig.undergroundTitles != TravelerConfig.UndergroundTitles.SHOW
                 && isSurfaceBiomeSeenFromUnderground(level, pos, biome)) {
             if (TravelerConfig.undergroundTitles == TravelerConfig.UndergroundTitles.HIDE) {
+                // Remembered so that climbing out into this same biome re-announces it.
+                // Only the HIDE branch does this: PLAIN_TEXT has already put a title on
+                // screen, and showing the artwork again on the way up would be the same
+                // place announced twice.
+                hiddenUnderground = true;
                 return;
             }
             asPlainText = true;
@@ -215,6 +245,26 @@ public final class TitleTracker {
      */
     private static boolean isSurfaceBiomeSeenFromUnderground(
             ClientLevel level, BlockPos pos, Identifier biome) {
+        if (!isBelowSurface(level, pos)) {
+            return false;
+        }
+        int surface = level.getHeight(
+                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, pos.getX(), pos.getZ());
+        if (!hasSolidCeiling(level, pos, surface)) {
+            return false;
+        }
+        return reachesTheSurfaceNearby(level, pos, biome);
+    }
+
+    /**
+     * Is the player far enough below ground level for the cave rule to be worth asking?
+     *
+     * <p>The cheap half of the test above, and deliberately ONE source of truth for it:
+     * the re-announce gate and the cave rule have to agree about what "underground"
+     * means, or a biome could be hidden on the way down and never re-offered on the way
+     * up. One heightmap lookup, so it is affordable per tick.
+     */
+    private static boolean isBelowSurface(ClientLevel level, BlockPos pos) {
         // The Nether has no sky and its heightmap is the ceiling, so every position in
         // it would read as underground and the rule would silence the whole dimension.
         if (!level.dimensionType().hasSkyLight()) {
@@ -225,13 +275,7 @@ public final class TitleTracker {
         // Dark Forest never announces itself.
         int surface = level.getHeight(
                 Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, pos.getX(), pos.getZ());
-        if (pos.getY() >= surface - UNDERGROUND_DEPTH) {
-            return false;
-        }
-        if (!hasSolidCeiling(level, pos, surface)) {
-            return false;
-        }
-        return reachesTheSurfaceNearby(level, pos, biome);
+        return pos.getY() < surface - UNDERGROUND_DEPTH;
     }
 
     /**
