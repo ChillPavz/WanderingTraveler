@@ -107,6 +107,20 @@ public final class TitleTracker {
         ClientLevel level = minecraft.level;
 
         BlockPos pos = player.blockPosition();
+        // AN UNLOADED CHUNK ANSWERS "PLAINS", IN EVERY DIMENSION. ClientChunkCache holds a
+        // single EmptyLevelChunk built with Biomes.PLAINS and hands it out for any chunk it
+        // does not have, so level.getBiome on a chunk that has not arrived yet is not a
+        // failure that can be detected from the value: it is a confident, wrong answer, and
+        // the same one in the Nether and the End. Teleporting therefore announced "Plains"
+        // and then the real biome a moment later, which is exactly what was reported.
+        //
+        // Returning here rather than declining further down is deliberate: lastBiome,
+        // lastDimension and joinedThisSession are all still untouched, so the real biome
+        // reads as the change once the chunk lands. Consuming joinedThisSession on a
+        // phantom Plains would also have broken "skip the biome you spawn in".
+        if (!isChunkLoaded(level, pos.getX(), pos.getZ())) {
+            return;
+        }
         Holder<Biome> holder = level.getBiome(pos);
         Identifier biome = holder.unwrapKey().map(ResourceKey::identifier).orElse(null);
         if (biome == null) {
@@ -174,6 +188,25 @@ public final class TitleTracker {
     }
 
     /**
+     * Has the client actually received the chunk covering these block coordinates?
+     *
+     * <p>ASK THE CHUNK SOURCE, NEVER THE LEVEL. {@code ClientLevel.hasChunk} is
+     * literally {@code return true} - one instruction, no lookup - because the client
+     * treats every position in render distance as present. It overrides
+     * LevelReader.hasChunk, so calling it compiles, reads correctly and answers yes for
+     * a chunk that has not arrived, which made the first version of this guard a no-op
+     * that shipped and changed nothing.
+     *
+     * <p>{@code ChunkSource.hasChunk} is the real test: {@code getChunk(x, z, FULL,
+     * false) != null}, and ClientChunkCache returns null there in exactly the case where
+     * the loading form would hand back its Plains-filled EmptyLevelChunk. ClientChunkCache
+     * does not override it. Both facts verified by disassembly at 26.1.2 and 26.2.
+     */
+    private static boolean isChunkLoaded(ClientLevel level, int blockX, int blockZ) {
+        return level.getChunkSource().hasChunk(blockX >> 4, blockZ >> 4);
+    }
+
+    /**
      * Is the player underground, in a biome that also exists at the surface?
      *
      * <p>This is the whole of the cave rule and it needs no list of cave biomes, which
@@ -228,9 +261,16 @@ public final class TitleTracker {
             for (int dz : SAMPLE_OFFSETS) {
                 int x = pos.getX() + dx;
                 int z = pos.getZ() + dz;
+                // Ask whether the chunk is there, rather than inferring it from a
+                // suspicious heightmap. An unloaded chunk does answer with the bottom of
+                // the world, but it also answers PLAINS for the biome, so a column that
+                // slipped past a sentinel check could match a Plains player and wrongly
+                // hide a legitimate title. The floor test stays as well: a loaded chunk
+                // can still be genuinely empty.
+                if (!isChunkLoaded(level, x, z)) {
+                    continue;
+                }
                 int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
-                // An unloaded chunk answers with the bottom of the world, and the biome
-                // there would be meaningless.
                 if (top <= floor + 1) {
                     continue;
                 }
