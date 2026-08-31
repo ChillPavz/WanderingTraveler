@@ -68,6 +68,18 @@ public final class TitleTracker {
     private static boolean hiddenUnderground;
 
     /**
+     * Was the player gliding on the previous tick that was considered?
+     *
+     * <p>The gliding decline leaves {@link #lastBiome} alone on purpose, so that the biome
+     * the player LANDS in still counts as a crossing. That works whenever the landing
+     * biome differs from the takeoff one, and silently does nothing when it does not:
+     * taking off from a Plains and landing in another Plains read as "no change" and
+     * announced nothing, even though the flight was the whole journey. This makes the
+     * landing itself the event.
+     */
+    private static boolean wasGliding;
+
+    /**
      * The connection this state belongs to, which is how a PORTAL is told from a REJOIN.
      *
      * <p>Going through a portal tears the client level down and builds a new one, so
@@ -90,6 +102,7 @@ public final class TitleTracker {
         lastDimension = null;
         joinedThisSession = false;
         hiddenUnderground = false;
+        wasGliding = false;
         recent.clear();
         TitleState.clear();
     }
@@ -148,6 +161,22 @@ public final class TitleTracker {
         // hideOnWorldJoin for anyone who had turned it off.
         boolean changedDimension = lastDimension != null && !dimension.equals(lastDimension);
         lastDimension = dimension;
+        if (changedDimension) {
+            // NO TITLE SURVIVES A DIMENSION CHANGE, and this has to happen before the
+            // dimension title is offered rather than after.
+            //
+            // Going through a portal while a biome title was still on screen used to keep
+            // that title, in the new dimension, AND lose the dimension title: the queue
+            // holds one, a newer arrival replaces it, so the biome of the dimension just
+            // entered overwrote the pending dimension title before it ever started.
+            // Clearing first means the old world's title leaves the screen at once and
+            // the dimension title fades in from nothing, which is what a portal should
+            // look like. The biome then queues behind it as designed.
+            //
+            // Done unconditionally, not just when dimension titles are on: a title from
+            // the world you have left should not linger in the new one either way.
+            TitleState.clear();
+        }
         if (changedDimension && TravelerConfig.showDimensionTitles
                 && !TravelerConfig.isSilenced(dimension.toString())) {
             // THE DIMENSION INTRODUCES THE BIOME, IT DOES NOT REPLACE IT. This used to
@@ -160,6 +189,11 @@ public final class TitleTracker {
                     + dimension.getPath(), false, true);
         }
 
+        // Read before the same-biome return, because landing is the event even when the
+        // biome underneath has not changed.
+        boolean glidingNow = TravelerConfig.hideWhileGliding && player.isFallFlying();
+        boolean justLanded = wasGliding && !glidingNow;
+
         if (biome.equals(lastBiome)) {
             // Normally there is nothing to do: the biome has not changed. The exception
             // is a biome that was HIDDEN underground, which the player has still never
@@ -170,7 +204,8 @@ public final class TitleTracker {
             // this replaces: the 49 column sweep still does not run on every tick the
             // player spends standing underground, only once they have actually climbed
             // out. Without the gate this would be the most expensive path in the mod.
-            if (!hiddenUnderground || isBelowSurface(level, pos)) {
+            boolean surfacedIntoHidden = hiddenUnderground && !isBelowSurface(level, pos);
+            if (!surfacedIntoHidden && !justLanded) {
                 return;
             }
         }
@@ -181,9 +216,11 @@ public final class TitleTracker {
         // as the tracker is concerned and the biome the player LANDS in gets announced.
         // Silence during the flight and then nothing at all afterwards would be a worse
         // reading of "hide while flying" than silence during the flight.
-        if (TravelerConfig.hideWhileGliding && player.isFallFlying()) {
+        if (glidingNow) {
+            wasGliding = true;
             return;
         }
+        wasGliding = false;
 
         // Set before the rest, so a biome that was declined is not reconsidered on every
         // tick the player stands in it. That matters most for the underground rule,

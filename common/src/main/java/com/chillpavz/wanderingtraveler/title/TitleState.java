@@ -111,14 +111,32 @@ public final class TitleState {
 
     private static void begin(String key, Component component, TitleArt.Entry entry,
                               boolean dimension) {
+        // CARRY THE OUTGOING OPACITY INTO THE INCOMING TITLE.
+        //
+        // A waiting title takes over after minTicksBetweenTitles, which is SHORTER than a
+        // title's own life at the defaults: 50 against 8 + 40 + 16 = 64. Hold ends at 48,
+        // so the title being replaced is typically two ticks into its sixteen tick fade
+        // out and still around 87% opaque. Resetting age to 0 dropped that to nothing in
+        // one frame and faded up again, which on screen reads as the title restarting, or
+        // loading twice - reported on all three loaders, because this is shared code.
+        //
+        // Starting the new title at the age that REPRODUCES the old one's opacity makes
+        // the swap continuous instead: alpha carries on from where it was rather than
+        // snapping to zero. A title replaced while still fully opaque simply changes its
+        // words, which is what a fast run of biomes should look like.
+        float carried = alpha(0.0F);
+
         text = component;
         artwork = entry;
-        age = 0;
         sinceLastStart = 0;
         lastKey = key;
         lastWasDimension = dimension;
         lifetime = Math.max(1, TravelerConfig.fadeInTicks
                 + TravelerConfig.holdTicks + TravelerConfig.fadeOutTicks);
+        age = carried <= 0.0F || TravelerConfig.fadeInTicks <= 0
+                ? 0
+                : Math.min(TravelerConfig.fadeInTicks,
+                        Math.round(TravelerConfig.fadeInTicks * carried));
         clearPending();
     }
 
