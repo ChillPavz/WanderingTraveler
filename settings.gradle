@@ -1,0 +1,60 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'Fabric'
+                    url = uri('https://maven.fabricmc.net')
+                }
+            }
+            filter {
+                includeGroup('net.fabricmc')
+                includeGroup('net.fabricmc.unpick')
+                includeGroup('fabric-loom')
+            }
+        }
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'Sponge'
+                    url = uri('https://repo.spongepowered.org/repository/maven-public')
+                }
+            }
+            filter {
+                includeGroupAndSubgroups("org.spongepowered")
+            }
+        }
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'Forge'
+                    url = uri('https://maven.minecraftforge.net')
+                }
+            }
+            filter {
+                includeGroupAndSubgroups('net.minecraftforge')
+            }
+        }
+        maven {
+            name = 'NeoForged'
+            url = uri('https://maven.neoforged.net/releases')
+        }
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+// This should match the folder name of the project, or else IDEA may complain (see https://youtrack.jetbrains.com/issue/IDEA-317606)
+rootProject.name = 'wanderingtraveler-1.20.1-multiloader'
+include('common')
+include('fabric')
+// THERE IS NO NEOFORGE MODULE AT THIS VERSION, and that is not an omission.
+// NeoForge 1.20.1 is 47.1.x: still on net.minecraftforge packages, and it PROVIDES the
+// `forge` mod id, so the Forge jar loads on it unchanged. One jar, tagged for both
+// loaders on the store page. The two only diverge from 1.20.2, where NeoForge renamed to
+// net.neoforged.
+include('forge')
