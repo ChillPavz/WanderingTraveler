@@ -1,0 +1,82 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "wanderingtraveler:title/minecraft/snowy_plains_0.png",
+      "ascent": 7,
+      "height": 12,
+      "chars": [
+        "\ue000"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "wanderingtraveler:title/minecraft/snowy_plains_1.png",
+      "ascent": 7,
+      "height": 12,
+      "chars": [
+        "\ue001"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "wanderingtraveler:title/minecraft/snowy_plains_2.png",
+      "ascent": 7,
+      "height": 12,
+      "chars": [
+        "\ue002"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "wanderingtraveler:title/minecraft/snowy_plains_3.png",
+      "ascent": 7,
+      "height": 12,
+      "chars": [
+        "\ue003"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "wanderingtraveler:title/minecraft/snowy_plains_4.png",
+      "ascent": 7,
+      "height": 12,
+      "chars": [
+        "\ue004"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "wanderingtraveler:title/minecraft/snowy_plains_5.png",
+      "ascent": 7,
+      "height": 12,
+      "chars": [
+        "\ue005"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "wanderingtraveler:title/minecraft/snowy_plains_6.png",
+      "ascent": 7,
+      "height": 12,
+      "chars": [
+        "\ue006"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "wanderingtraveler:title/minecraft/snowy_plains_7.png",
+      "ascent": 7,
+      "height": 12,
+      "chars": [
+        "\ue007"
+      ]
+    },
+    {
+      "type": "space",
+      "advances": {
+        "\ue010": -1
+      }
+    }
+  ]
+}
