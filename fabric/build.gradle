@@ -1,0 +1,78 @@
+plugins {
+    id 'multiloader-loader'
+    id 'fabric-loom'
+}
+// ONE FABRIC JAR COVERS 1.21.6 THROUGH 1.21.11, because Loom remaps to intermediary and
+// the ResourceLocation to Identifier rename is invisible there. NeoForge and Forge run on
+// official names and stop at 1.21.10, so they keep the shared label.
+base {
+    archivesName = "${mod_id}-fabric-${fabric_minecraft_version_label}"
+}
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${parchment_minecraft}:${parchment_version}@zip")
+    }
+    modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+
+    // Cloth is a REQUIRED, separately downloaded dependency - never jar-in-jar'd, it is
+    // LGPL-3.0. Mod Menu is optional and only supplies the button.
+    // modImplementation, not implementation: 1.21.11 is still obfuscated, so mod
+    // dependencies have to be remapped. The 26.x branch uses plain implementation
+    // because Loom dropped modImplementation once the game shipped de-obfuscated.
+    modImplementation("me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}") {
+        exclude(group: 'net.fabricmc.fabric-api')
+    }
+    modImplementation("com.terraformersmc:modmenu:${mod_menu_version}") {
+        exclude(group: 'net.fabricmc.fabric-api')
+    }
+}
+
+loom {
+    def aw = project(':common').file("src/main/resources/${mod_id}.accesswidener")
+    if (aw.exists()) {
+        accessWidenerPath.set(aw)
+    }
+    runs {
+        client {
+            client()
+            setConfigName('Fabric Client')
+            ideConfigGenerated(true)
+            runDir('runs/client')
+        }
+        server {
+            server()
+            setConfigName('Fabric Server')
+            ideConfigGenerated(true)
+            runDir('runs/server')
+        }
+    }
+}
+
+// Implement mcgradleconventions loader attribute
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements', 'includeInternal', 'modCompileClasspath'].each { variant ->
+    configurations.named("$variant") {
+        attributes {
+            attribute(loaderAttribute, 'fabric')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName].each { variant->
+        configurations.named("$variant") {
+            attributes {
+                attribute(loaderAttribute, 'fabric')
+            }
+        }
+    }
+}
+loom.remapConfigurations.configureEach {
+    configurations.named(it.name) {
+        attributes {
+            attribute(loaderAttribute, 'fabric')
+        }
+    }
+}
