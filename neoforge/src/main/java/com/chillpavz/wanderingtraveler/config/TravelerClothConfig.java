@@ -167,10 +167,14 @@ public class TravelerClothConfig implements ConfigData {
     @ConfigEntry.Gui.Tooltip
     public int fadeOutTicks = 16;
 
+    // The slider this replaced was a minimum GAP between titles, and it was the wrong
+    // shape: it made a title WAIT, then let it replace the one in front of it without a
+    // fade out.  What a player actually wants defended is that a title can be read, so
+    // that is what the number now says.  Capped by Time on Screen in use.
     @ConfigEntry.Category("timing")
-    @ConfigEntry.BoundedDiscrete(min = 0, max = 200)
+    @ConfigEntry.BoundedDiscrete(min = 0, max = 60)
     @ConfigEntry.Gui.Tooltip(count = 3)
-    public int minimumTimeBetweenTitles = 50;
+    public int minimumTimeOnScreen = 10;
 
     // ---------------------------------------------------------------- situations
     @ConfigEntry.Category("situations")
@@ -230,7 +234,7 @@ public class TravelerClothConfig implements ConfigData {
         TravelerConfig.fadeInTicks = fadeInTicks;
         TravelerConfig.holdTicks = timeOnScreenTicks;
         TravelerConfig.fadeOutTicks = fadeOutTicks;
-        TravelerConfig.minTicksBetweenTitles = minimumTimeBetweenTitles;
+        TravelerConfig.minTimeOnScreenTicks = minimumTimeOnScreen;
 
         TravelerConfig.hideWhileGliding = hideWhileFlyingWithElytra;
         TravelerConfig.undergroundTitles = surfaceBiomesWhileUnderground;

@@ -179,19 +179,25 @@ public final class TravelerConfig {
     public static int fadeOutTicks = 16;
 
     /**
-     * How long a title keeps the screen before the next one may take it, in ticks.
+     * Ticks a title is GUARANTEED at full opacity before the next one may end its hold.
      *
-     * <p>Crossing several borders quickly used to stamp each title straight over the one
-     * before it, so none of them could be read - worst on an elytra, where a handful of
-     * biomes go past in a second. A new title now waits its turn, and while it waits it
-     * is REPLACED by any newer one, so a run of five biomes shows the first and the last
-     * and skips the three in between rather than queueing all five.
+     * <p>This replaced a minimum GAP between titles, and the difference is the whole of
+     * the fix. A gap made a new title wait, and when it finally arrived it replaced the
+     * one in front of it, so the outgoing fade out never happened and the incoming title
+     * appeared up to two and a half seconds after the border was crossed. Nothing waits
+     * now: crossing a border ends the current title's hold, and the sequence itself
+     * shortens in proportion to how fast the borders are arriving.
      *
-     * <p>50 ticks is two and a half seconds, which is long enough to read a title and
-     * short enough that the one waiting behind it does not feel stale. 0 restores the
-     * old behaviour of every title replacing the last one at once.
+     * <p>What this number buys is the one thing that has to be defended when a player is
+     * moving fast: that each title is actually READ. Below it nothing may interrupt, so
+     * a run of borders cannot turn into a strobe of half drawn names. 10 ticks is half a
+     * second at full opacity, on top of a fade in and a fade out that always play in
+     * full.
+     *
+     * <p>Capped at {@link #holdTicks} in use, so it can never make a title outlive its
+     * own configured hold. 0 lets every arrival end the hold at once.
      */
-    public static int minTicksBetweenTitles = 50;
+    public static int minTimeOnScreenTicks = 10;
 
     // ----------------------------------------------------------------- situations
     /**
