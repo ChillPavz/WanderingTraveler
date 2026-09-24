@@ -9,6 +9,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackResources;
+import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 
@@ -16,6 +18,9 @@ import java.io.BufferedReader;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Finds the hand-made titles and turns a biome or dimension id into something drawable.
@@ -77,13 +82,48 @@ public final class TitleArt {
      * the top of its own box.
      */
     public static void reload(ResourceManager resources) {
-        Map<Identifier, Entry> found = new HashMap<>();
-        Map<Identifier, Resource> files = resources.listResources(
-                FONT_DIR, id -> id.getPath().endsWith(".json"));
+        // DEGRADE, NEVER CRASH. This runs inside the game's resource reload, and an
+        // exception escaping it fails the whole reload rather than just this mod. With
+        // nothing discovered every title still shows, as plain text.
+        try {
+            discover(resources);
+        } catch (Throwable t) {
+            available = Map.of();
+            Constants.LOG.error("Could not discover title glyphs; titles will show as "
+                    + "plain text", t);
+        }
+    }
 
-        for (Map.Entry<Identifier, Resource> file : files.entrySet()) {
-            Identifier path = file.getKey();
-            if (!Constants.MOD_ID.equals(path.getNamespace())) {
+    /**
+     * Every title font definition under our namespace, each resolved to the pack that
+     * wins it.
+     *
+     * <p><b>NOT {@code ResourceManager.listResources}, which cannot span 26.3.</b> Its
+     * second parameter is a {@code Predicate<Identifier>} up to 26.2 and a
+     * {@code ResourceManager.Selector} from 26.3, so any call compiled against one
+     * version throws {@code NoSuchMethodError} on the other - and here that is inside
+     * the resource reload. {@code listPacks}, {@code PackResources.listResources} and
+     * {@code ResourceProvider.getResource} have identical descriptors on 26.1 through
+     * 26.3, read from the client jars, so they are what this is built from.
+     *
+     * <p>Asking {@code getResource} for each id found gives the same answer the merged
+     * listing gave: the resource from the highest-priority pack that has that path, so
+     * a resource pack overriding one of our titles still wins.
+     */
+    private static void discover(ResourceManager resources) {
+        Set<Identifier> paths = new TreeSet<>();
+        resources.listPacks().forEach((PackResources pack) -> pack.listResources(
+                PackType.CLIENT_RESOURCES, Constants.MOD_ID, FONT_DIR,
+                (id, supplier) -> {
+                    if (id.getPath().endsWith(".json")) {
+                        paths.add(id);
+                    }
+                }));
+
+        Map<Identifier, Entry> found = new HashMap<>();
+        for (Identifier path : paths) {
+            Optional<Resource> winner = resources.getResource(path);
+            if (winner.isEmpty()) {
                 continue;
             }
             // wanderingtraveler:font/title/<ns>/<name>.json  ->  <ns>:<name>
@@ -108,7 +148,7 @@ public final class TitleArt {
                     fontPath.length() - ".json".length());
             Identifier font = Identifier.fromNamespaceAndPath(Constants.MOD_ID, fontPath);
 
-            Entry entry = read(file.getValue(), path, font);
+            Entry entry = read(winner.get(), path, font);
             if (entry != null) {
                 found.put(subject, entry);
             }

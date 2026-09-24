@@ -5,7 +5,7 @@ than as plain text.
 
 | | |
 |---|---|
-| Minecraft | 26.1, 26.1.1, 26.1.2 and 26.2, one jar per loader |
+| Minecraft | 26.1, 26.1.1, 26.1.2, 26.2 and 26.3, one jar per loader |
 | Loaders | Fabric, NeoForge, Quilt (untested) |
 | Environment | Client only. A server neither needs it nor knows about it |
 | Licence | All Rights Reserved. Modpacks may include an unmodified build without asking, see `LICENSE` |

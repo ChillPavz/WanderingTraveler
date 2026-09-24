@@ -131,6 +131,73 @@ def class_fields(data):
     return out
 
 
+# REFERENCES THAT DO NOT SPAN THE 26.x LINE. Each resolves on some version this jar
+# declares and not on another, so a jar carrying one installs cleanly and then throws
+# NoSuchMethodError, NoSuchFieldError or NoClassDefFoundError on the version that lacks it.
+# All five were found by resolving the built jars against the real 26.1, 26.2 and 26.3
+# artefacts; the first two were in this mod.
+#
+# Matched as MEMBER REFERENCES - owner, name and descriptor out of the constant pool - and
+# never as bare strings, because the replacement for blocksMotion is a private helper of
+# the same name, and PackResources.listResources is the replacement for the other one.
+NON_SPANNING = [
+    ('Methodref', 'net/minecraft/world/level/block/state/BlockState', 'blocksMotion', None,
+     'gone at 26.3 with no renamed twin; write out isSolid() minus cobweb and bamboo sapling'),
+    ('InterfaceMethodref', 'net/minecraft/server/packs/resources/ResourceManager',
+     'listResources', '(Ljava/lang/String;Ljava/util/function/Predicate;)Ljava/util/Map;',
+     'takes a ResourceManager.Selector from 26.3; list the packs instead'),
+    ('InterfaceMethodref', 'net/minecraft/server/packs/resources/ResourceManager',
+     'listResourceStacks', '(Ljava/lang/String;Ljava/util/function/Predicate;)Ljava/util/Map;',
+     'takes a ResourceManager.Selector from 26.3'),
+    ('Class', 'com/mojang/blaze3d/pipeline/RenderPipeline', None, None,
+     'moved to com/mojang/renderpearl/api/pipeline at 26.3; use the pipeline-free blit'),
+    ('Fieldref', 'com/mojang/blaze3d/platform/InputConstants$Type', 'KEYSYM', None,
+     'merged into KEYBOARD at 26.3; use the KeyMapping constructor that takes no Type'),
+]
+
+_CP_REF = {9: 'Fieldref', 10: 'Methodref', 11: 'InterfaceMethodref'}
+
+
+def member_refs(data):
+    """Every Class and member reference a class file makes: (kind, owner, name, desc)."""
+    count = struct.unpack('>H', data[8:10])[0]
+    pos, i, entries = 10, 1, {}
+    while i < count:
+        tag = data[pos]
+        if tag == 1:
+            n = struct.unpack('>H', data[pos + 1:pos + 3])[0]
+            entries[i] = (1, data[pos + 3:pos + 3 + n].decode('utf-8', 'replace'))
+            pos += 3 + n
+        elif tag in (5, 6):                   # long and double take two slots
+            pos += 9
+            i += 1
+        elif tag == 7:
+            entries[i] = (7, struct.unpack('>H', data[pos + 1:pos + 3])[0])
+            pos += 3
+        elif tag == 12:
+            entries[i] = (12, struct.unpack('>HH', data[pos + 1:pos + 5]))
+            pos += 5
+        elif tag in _CP_REF:
+            entries[i] = (tag, struct.unpack('>HH', data[pos + 1:pos + 5]))
+            pos += 5
+        else:
+            pos += 1 + _CP_SKIP[tag]
+        i += 1
+
+    def utf(k):
+        return entries[k][1]
+
+    out = set()
+    for tag, val in entries.values():
+        if tag == 7:
+            out.add(('Class', utf(val), None, None))
+        elif tag in _CP_REF:
+            owner = utf(entries[val[0]][1])
+            name_i, desc_i = entries[val[1]][1]
+            out.add((_CP_REF[tag], owner, utf(name_i), utf(desc_i)))
+    return out
+
+
 def audit(jar_path, loader, problems):
     zf = zipfile.ZipFile(jar_path)
     names = set(zf.namelist())
@@ -255,6 +322,25 @@ def audit(jar_path, loader, problems):
                 if key not in lang:
                     fail('the enum constant %s has no %s, so the screen offers the '
                          'player a raw key to choose from' % (name, key))
+
+    # --- nothing that breaks on one of the versions this jar declares -----
+    ours = sorted(n for n in names
+                  if n.startswith('com/chillpavz/%s/' % MOD_ID) and n.endswith('.class'))
+    if not ours:
+        fail("none of the mod's own classes are in the jar")
+    refs = set()
+    for name in ours:
+        refs |= {(name,) + r for r in member_refs(zf.read(name))}
+    if not any(r[1:] == ('Class', 'net/minecraft/client/Minecraft', None, None) for r in refs):
+        # A parser that silently reads nothing would pass every check below.
+        fail('the constant-pool reader found no reference to net/minecraft/client/Minecraft, '
+             'so it is not reading the classes and the span check below proves nothing')
+    for kind, owner, member, desc, why in NON_SPANNING:
+        for cls, k, o, n, d in sorted(refs):
+            if k == kind and o == owner and member in (None, n) and desc in (None, d):
+                fail('%s references %s.%s%s, which does not exist on every version this jar '
+                     'declares: %s' % (cls[:-len('.class')].replace('/', '.'), owner,
+                                       n or '', d or '', why))
 
     # --- no mixins, on purpose -------------------------------------------
     stray = [n for n in names if n.endswith('mixins.json')]

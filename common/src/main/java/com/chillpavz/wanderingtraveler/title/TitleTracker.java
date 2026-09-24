@@ -12,6 +12,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 
@@ -378,6 +379,21 @@ public final class TitleTracker {
      * <p>Runs only when the biome changes, never per frame, so walking the column is
      * cheap enough to be the honest test rather than an approximation of one.
      */
+    /**
+     * Whether this block stops movement: 26.2's own {@code BlockState.blocksMotion},
+     * written out.
+     *
+     * <p><b>{@code blocksMotion} DOES NOT EXIST AT 26.3</b>, and there is no renamed
+     * twin: vanilla's heightmap now tests a new block tag,
+     * {@code BLOCKS_MOTION_IN_HEIGHTMAP}, which in turn does not exist at 26.2. A jar
+     * spanning both can name neither. Up to 26.2 the method body was exactly this line,
+     * and {@code isSolid} reads the same {@code legacySolid} field on 26.1, 26.2 and
+     * 26.3, so this gives the tested behaviour on every version the jar serves.
+     */
+    private static boolean blocksMotion(BlockState state) {
+        return !state.is(Blocks.COBWEB) && !state.is(Blocks.BAMBOO_SAPLING) && state.isSolid();
+    }
+
     private static boolean hasSolidCeiling(ClientLevel level, BlockPos pos, int surface) {
         BlockPos.MutableBlockPos cursor =
                 new BlockPos.MutableBlockPos(pos.getX(), pos.getY(), pos.getZ());
@@ -385,7 +401,7 @@ public final class TitleTracker {
         // not count on its own.
         for (int y = pos.getY() + 2; y < surface; y++) {
             BlockState state = level.getBlockState(cursor.setY(y));
-            if (state.blocksMotion() && state.getFluidState().isEmpty()) {
+            if (blocksMotion(state) && state.getFluidState().isEmpty()) {
                 return true;
             }
         }

@@ -7,7 +7,11 @@ modId = "${mod_id}"
 version = "${version}"
 displayName = "${mod_name}"
 credits = "${credits}"
+# BOTH keys, because the jar spans 26.1. NeoForge from 26.2 reads iconFile and warns
+# in development about a bare logoFile; 26.1 knows only logoFile. A square icon is
+# what iconFile is for, where logoFile was always drawn as a banner.
 logoFile = "assets/${mod_id}/icon.png"
+iconFile = "assets/${mod_id}/icon.png"
 authors = "${mod_author}"
 description = '''${description}'''
 # Client-only: nothing here runs on a dedicated server, so a server must not refuse a
