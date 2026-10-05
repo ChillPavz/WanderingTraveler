@@ -3,6 +3,9 @@ package com.chillpavz.wanderingtraveler.title;
 import com.chillpavz.wanderingtraveler.config.TravelerConfig;
 import net.minecraft.network.chat.Component;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * The one title currently on screen, the one waiting behind it, and how opaque the
  * current one is this frame.
@@ -40,8 +43,18 @@ import net.minecraft.network.chat.Component;
  * two and a half seconds to appear, and when it did appear it REPLACED the one in front
  * of it, so the outgoing fade out never happened.
  *
- * <p>The gap is gone. What throttles a fast run now is the sequence itself, shortened in
- * proportion to how quickly borders are arriving. See {@link #paceScale()}.
+ * <p>The gap is gone. What throttles a fast run now is the sequence itself: a title's
+ * fade in, its guaranteed time at full opacity and its fade out. The fades play at their
+ * full configured length unless the player turns on Faster Fades When Busy, which
+ * shortens them in proportion to how quickly borders are arriving (see
+ * {@link #paceScale()}). Shortening them was the 1.1.0 default, and it read as rushed.
+ *
+ * <h2>Nothing plays catch-up, and nothing brightens again</h2>
+ * A title waiting for its turn is dropped if the player leaves its biome before it starts
+ * ({@link #dropPending()}), so the screen only ever names where the player is. A title
+ * that has started fading out always finishes fading out: coming back to its biome stops
+ * anything else from being announced, but it does not bring the title back up. Doing that
+ * reset its hold and read as the same title loading twice.
  *
  * <h2>The queue is still exactly one deep</h2>
  * A newer arrival REPLACES the one waiting rather than joining a line behind it, which
@@ -104,6 +117,15 @@ public final class TitleState {
     private static int sinceLastStart = LONG_AGO;
 
     /**
+     * Ticks since the game started, never reset, so the tracker can ask whether a title
+     * started after a given moment. {@link #clear()} leaves it alone on purpose.
+     */
+    private static long clock;
+
+    /** When each displayed name last STARTED, on {@link #clock}. */
+    private static final Map<String, Long> startedAt = new HashMap<>();
+
+    /**
      * The DISPLAYED NAME of the title that last started, kept after it has faded out.
      *
      * <p>Used to cancel a title that would follow itself: crossing four borders quickly
@@ -138,21 +160,19 @@ public final class TitleState {
                             boolean dimension) {
         float scale = paceScale();
 
-        if (key.equals(lastKey) && phase != Phase.GONE) {
+        if (key.equals(lastKey) && (phase != Phase.GONE || pendingText != null)) {
             // BACK WHERE WE STARTED, so there is nothing to announce. Cross from Plains
             // into Forest and straight back, and this would otherwise play Plains over
             // the Plains title already on screen: the same name fading into the same
             // name, which reads as a glitch rather than as a border crossing.
             //
-            // The trip cancels itself out, so the cut it asked for is cancelled too, and
-            // a title already fading out on its account is faded back IN rather than
-            // left to die - the player is standing in the biome it names.
-            clearPending();
-            cutWanted = false;
-            if (phase == Phase.FADE_OUT) {
-                phase = Phase.FADE_IN;
-                step = fadeInStep(1.0F);
-            }
+            // GONE WITH SOMETHING QUEUED COUNTS TOO. A title cut by the next one fades
+            // out, reaches zero and is GONE for exactly one tick before the queued title
+            // starts. Stepping back on that tick used to put this same name back in the
+            // queue in place of the other one, so it replayed straight after fading out:
+            // the "same biome loads again" that 1.0 had fixed with its minimum gap and
+            // 1.1.0 brought back when the gap went.
+            returnTo(key);
             return;
         }
 
@@ -165,7 +185,11 @@ public final class TitleState {
         pendingText = component;
         pendingArtwork = entry;
         pendingIsDimension = dimension;
-        pendingScale = scale;
+        // BEHIND A DIMENSION TITLE, ALWAYS AT FULL LENGTH. The biome arrives the same tick
+        // the dimension title starts, so the pace measured now says "a title started 0
+        // ticks ago" and would squeeze the biome's fade in to three ticks, a flash, even
+        // though it will only start seconds later. A portal is not fast travel.
+        pendingScale = currentIsDimension || afterPause > 0 ? 1.0F : scale;
 
         // A DIMENSION TITLE IS NEVER CUT. It is introducing the biome title behind it,
         // so it plays in full and the biome waits out AFTER_DIMENSION_PAUSE on top.
@@ -173,6 +197,71 @@ public final class TitleState {
             cutWanted = true;
             cutScale = scale;
         }
+    }
+
+    /**
+     * The player is in a place whose title is not going to be announced again: it is
+     * the title on screen, or it started too recently. Whatever was queued for the
+     * places in between is dropped.
+     *
+     * <p>If the title on screen is this place's own, the trip cancels itself out: the
+     * cut it asked for is cancelled, so a title still in its hold simply carries on. One
+     * that has already started fading out FINISHES fading out. It used to be faded back
+     * in and given a whole new hold, which on screen was the same title dimming and
+     * coming back as if it had loaded again.
+     *
+     * <p>If the title on screen is for somewhere the player has left, it plays out, unless
+     * End Title When You Leave is on: then it is cut short as if another title had
+     * arrived, keeping its guaranteed hold and its full fade out. A dimension title is
+     * never cut.
+     */
+    public static void returnTo(String key) {
+        clearPending();
+        if (phase == Phase.GONE) {
+            cutWanted = false;
+            return;
+        }
+        if (key.equals(lastKey)) {
+            cutWanted = false;
+            return;
+        }
+        cutWanted = TravelerConfig.endTitleWhenLeaving && !currentIsDimension;
+        cutScale = paceScale();
+    }
+
+    /**
+     * The player has arrived somewhere else, so a title still waiting for its turn names
+     * a place they have left: drop it rather than play it late.
+     *
+     * <p>Without this the one-deep queue played catch-up: cross into a Forest while
+     * another title held the screen, keep walking into a biome whose title is not shown
+     * (too recent, silenced, a surface biome seen from a cave), and "Forest" appeared a
+     * second or two later, about a place already behind the player.
+     *
+     * <p>The cut that the dropped title asked for is withdrawn too, so the title on screen
+     * plays out, unless End Title When You Leave says otherwise. The tracker calls this
+     * on every biome change it counts, before deciding whether to announce the new one;
+     * an announcement simply queues itself again.
+     */
+    public static void dropPending() {
+        if (pendingText == null || pendingIsDimension) {
+            return;
+        }
+        clearPending();
+        if (!TravelerConfig.endTitleWhenLeaving) {
+            cutWanted = false;
+        }
+    }
+
+    /** {@link #clock} now, for {@link #startedSince}. */
+    public static long now() {
+        return clock;
+    }
+
+    /** Has a title with this displayed name started at or after {@code tick}? */
+    public static boolean startedSince(String key, long tick) {
+        Long at = startedAt.get(key);
+        return at != null && at >= tick;
     }
 
     /**
@@ -187,8 +276,14 @@ public final class TitleState {
      * <p>It is SELF TUNING: a run of borders at a steady pace settles on a scale that
      * fits a whole title into the interval between them, because the interval is what
      * the scale is measured from. Nothing has to know an elytra from a walk.
+     *
+     * <p>OFF BY DEFAULT since 1.2.0, behind Faster Fades When Busy: the owner found the
+     * shortened fades rushed, and preferred every fade at its full length.
      */
     private static float paceScale() {
+        if (!TravelerConfig.fasterFadesWhenBusy) {
+            return 1.0F;
+        }
         int full = Math.max(1, TravelerConfig.fadeInTicks
                 + TravelerConfig.holdTicks + TravelerConfig.fadeOutTicks);
         if (sinceLastStart >= full) {
@@ -233,6 +328,7 @@ public final class TitleState {
         text = component;
         artwork = entry;
         lastKey = key;
+        startedAt.put(key, clock);
         currentIsDimension = dimension;
         sinceLastStart = 0;
         cutWanted = false;
@@ -303,6 +399,7 @@ public final class TitleState {
         afterPause = 0;
         sinceLastStart = LONG_AGO;
         lastKey = null;
+        startedAt.clear();
         currentIsDimension = false;
         cutWanted = false;
         cutScale = 1.0F;
@@ -310,6 +407,7 @@ public final class TitleState {
     }
 
     public static void tick() {
+        clock++;
         if (sinceLastStart < LONG_AGO) {
             sinceLastStart++;
         }
