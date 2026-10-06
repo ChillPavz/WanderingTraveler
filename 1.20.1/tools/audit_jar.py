@@ -556,7 +556,7 @@ def config_annotations_match(problems):
     """
     src = os.path.join(ROOT, 'fabric', 'src', 'main', 'java', 'com', 'chillpavz',
                        'wanderingtraveler', 'config', 'TravelerClothConfig.java')
-    lang = os.path.join(ROOT, 'common', 'src', 'main', 'resources', 'assets', MOD_ID,
+    lang = os.path.join(ROOT, '..', 'shared', 'resources', 'assets', MOD_ID,
                         'lang', 'en_us.json')
     if not (os.path.isfile(src) and os.path.isfile(lang)):
         problems.append('the config class or the lang file is missing from the source tree')
