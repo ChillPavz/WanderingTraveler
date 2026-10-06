@@ -1,13 +1,11 @@
 {
   "text.autoconfig.wanderingtraveler.title": "Wandering Traveler",
-
   "text.autoconfig.wanderingtraveler.category.general": "General",
   "text.autoconfig.wanderingtraveler.category.appearance": "Appearance",
   "text.autoconfig.wanderingtraveler.category.placement": "Placement",
   "text.autoconfig.wanderingtraveler.category.timing": "Timing",
   "text.autoconfig.wanderingtraveler.category.situations": "When to Show",
   "text.autoconfig.wanderingtraveler.category.suppression": "Repeats",
-
   "text.autoconfig.wanderingtraveler.option.showBiomeTitles": "Show Biome Titles",
   "text.autoconfig.wanderingtraveler.option.showBiomeTitles.@Tooltip": "Turn the whole mod off without removing it.",
   "text.autoconfig.wanderingtraveler.option.useArtwork": "Use the 3D Artwork",
@@ -18,7 +16,6 @@
   "text.autoconfig.wanderingtraveler.option.showTooltips": "Show Tooltips",
   "text.autoconfig.wanderingtraveler.option.showTooltips.@Tooltip[0]": "The little explanations that appear when you hover over a setting.",
   "text.autoconfig.wanderingtraveler.option.showTooltips.@Tooltip[1]": "Off hides all of them, including this one. Applies as soon as you save.",
-
   "text.autoconfig.wanderingtraveler.option.sizeShortNames": "Size: Short Names",
   "text.autoconfig.wanderingtraveler.option.sizeShortNames.@Tooltip": "Percent. Names like Taiga, Ocean and Desert.",
   "text.autoconfig.wanderingtraveler.option.sizeMediumNames": "Size: Medium Names",
@@ -39,7 +36,6 @@
   "text.autoconfig.wanderingtraveler.option.plainTextShadowColour": "Plain Text Shadow Colour",
   "text.autoconfig.wanderingtraveler.option.plainTextShadowColour.@Tooltip[0]": "Only used when the setting above is off.",
   "text.autoconfig.wanderingtraveler.option.plainTextShadowColour.@Tooltip[1]": "While it is on, this shows the colour that was worked out for you.",
-
   "text.autoconfig.wanderingtraveler.option.cornerOfTheScreen": "Position on Screen",
   "text.autoconfig.wanderingtraveler.option.cornerOfTheScreen.@Tooltip[0]": "Each position already clears the HUD: the middle row sits on the crosshair,",
   "text.autoconfig.wanderingtraveler.option.cornerOfTheScreen.@Tooltip[1]": "and the bottom row sits above the hotbar. The nudges below are extra.",
@@ -47,24 +43,32 @@
   "text.autoconfig.wanderingtraveler.option.offsetRight.@Tooltip": "Pixels at the current GUI scale. Negative moves left.",
   "text.autoconfig.wanderingtraveler.option.offsetDown": "Nudge Down",
   "text.autoconfig.wanderingtraveler.option.offsetDown.@Tooltip": "Pixels at the current GUI scale. Negative moves up.",
-
   "text.autoconfig.wanderingtraveler.option.fadeInTicks": "Fade In",
   "text.autoconfig.wanderingtraveler.option.fadeInTicks.@Tooltip": "Ticks. 20 ticks is one second.",
   "text.autoconfig.wanderingtraveler.option.timeOnScreenTicks": "Time on Screen",
   "text.autoconfig.wanderingtraveler.option.timeOnScreenTicks.@Tooltip": "Ticks at full opacity, before the fade out starts.",
   "text.autoconfig.wanderingtraveler.option.fadeOutTicks": "Fade Out",
   "text.autoconfig.wanderingtraveler.option.fadeOutTicks.@Tooltip": "Ticks. 20 ticks is one second.",
-  "text.autoconfig.wanderingtraveler.option.minimumTimeBetweenTitles": "Minimum Time Between Titles",
-  "text.autoconfig.wanderingtraveler.option.minimumTimeBetweenTitles.@Tooltip[0]": "Ticks a title keeps the screen before the next one may take it.",
-  "text.autoconfig.wanderingtraveler.option.minimumTimeBetweenTitles.@Tooltip[1]": "Cross several biomes quickly and you see the first, then the one you ended up in.",
-  "text.autoconfig.wanderingtraveler.option.minimumTimeBetweenTitles.@Tooltip[2]": "Set it to 0 to let every title replace the last one at once.",
-
+  "text.autoconfig.wanderingtraveler.option.minimumTimeOnScreen": "Minimum Time on Screen",
+  "text.autoconfig.wanderingtraveler.option.minimumTimeOnScreen.@Tooltip[0]": "Ticks a title stays at full opacity before a new biome can end it early.",
+  "text.autoconfig.wanderingtraveler.option.minimumTimeOnScreen.@Tooltip[1]": "The next title waits for that, then for this one to fade out. It never fades out early.",
+  "text.autoconfig.wanderingtraveler.option.fasterFadesWhenBusy": "Faster Fades When Busy",
+  "text.autoconfig.wanderingtraveler.option.fasterFadesWhenBusy.@Tooltip[0]": "Shortens both fades when you cross biomes faster than a whole title takes, so titles keep up.",
+  "text.autoconfig.wanderingtraveler.option.fasterFadesWhenBusy.@Tooltip[1]": "Off plays every fade at its full length. Never applies to the biome after a dimension title.",
+  "text.autoconfig.wanderingtraveler.option.distanceIntoABiome": "Distance Into a Biome",
+  "text.autoconfig.wanderingtraveler.option.distanceIntoABiome.@Tooltip[0]": "Blocks. A biome is announced once you are this far inside it, so walking along an edge shows nothing.",
+  "text.autoconfig.wanderingtraveler.option.distanceIntoABiome.@Tooltip[1]": "Rivers and beaches narrower than twice this are skipped. 0 announces the moment you cross.",
+  "text.autoconfig.wanderingtraveler.option.sameTitleCooldown": "Same Title Cooldown",
+  "text.autoconfig.wanderingtraveler.option.sameTitleCooldown.@Tooltip[0]": "Seconds before the same title can show again, whatever you crossed in between.",
+  "text.autoconfig.wanderingtraveler.option.sameTitleCooldown.@Tooltip[1]": "Also applies when you climb out of a cave. Landing from an elytra flight always shows. 0 turns it off.",
+  "text.autoconfig.wanderingtraveler.option.endTitleWhenYouLeave": "End Title When You Leave",
+  "text.autoconfig.wanderingtraveler.option.endTitleWhenYouLeave.@Tooltip[0]": "When you step into a biome whose title is held back by the cooldown, the title of the place you left ends early.",
+  "text.autoconfig.wanderingtraveler.option.endTitleWhenYouLeave.@Tooltip[1]": "It still gets its minimum time on screen and its full fade out. Off lets it play out.",
   "text.autoconfig.wanderingtraveler.option.hideWhileFlyingWithElytra": "Hide While Flying With an Elytra",
   "text.autoconfig.wanderingtraveler.option.hideWhileFlyingWithElytra.@Tooltip": "The biome you land in is still announced.",
   "text.autoconfig.wanderingtraveler.option.surfaceBiomesWhileUnderground": "Surface Biomes While Underground",
   "text.autoconfig.wanderingtraveler.option.surfaceBiomesWhileUnderground.@Tooltip[0]": "What to do, while you are in a cave, with a biome that also exists at the surface.",
   "text.autoconfig.wanderingtraveler.option.surfaceBiomesWhileUnderground.@Tooltip[1]": "Cave biomes always show, whatever this is set to.",
-
   "text.autoconfig.wanderingtraveler.option.showATitle": "Show a Title",
   "text.autoconfig.wanderingtraveler.option.showATitle.@Tooltip[0]": "How often the same place is worth announcing.",
   "text.autoconfig.wanderingtraveler.option.showATitle.@Tooltip[1]": "Biomes that display the same name count as one place.",
@@ -75,7 +79,6 @@
   "text.autoconfig.wanderingtraveler.option.neverShowTheseBiomes": "Never Show These",
   "text.autoconfig.wanderingtraveler.option.neverShowTheseBiomes.@Tooltip[0]": "Biome or dimension ids, one per row. A name on its own is treated as a vanilla one.",
   "text.autoconfig.wanderingtraveler.option.neverShowTheseBiomes.@Tooltip[1]": "A name that matches nothing is simply never used, so a typo is harmless.",
-
   "wanderingtraveler.anchor.top_left": "Top left",
   "wanderingtraveler.anchor.top_center": "Top centre",
   "wanderingtraveler.anchor.top_right": "Top right",
@@ -85,11 +88,9 @@
   "wanderingtraveler.anchor.bottom_left": "Bottom left",
   "wanderingtraveler.anchor.bottom_center": "Bottom centre",
   "wanderingtraveler.anchor.bottom_right": "Bottom right",
-
   "wanderingtraveler.underground.show": "Show them normally",
   "wanderingtraveler.underground.plain_text": "Show them as plain text",
   "wanderingtraveler.underground.hide": "Do not show them",
-
   "wanderingtraveler.showwhen.always": "Every time I cross a border",
   "wanderingtraveler.showwhen.not_seen_recently": "Not if I have seen it recently",
   "wanderingtraveler.showwhen.first_time_only": "Only the first time I see it"
