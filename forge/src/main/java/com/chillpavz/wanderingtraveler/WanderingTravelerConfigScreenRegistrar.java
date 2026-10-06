@@ -1,6 +1,6 @@
 package com.chillpavz.wanderingtraveler;
 
-import com.chillpavz.wanderingtraveler.config.TravelerClothConfig;
+import com.chillpavz.wanderingtraveler.config.ClothCompat;
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.fml.ModLoadingContext;
 
@@ -10,9 +10,8 @@ import net.minecraftforge.fml.ModLoadingContext;
  * the Dist guard in {@link WanderingTravelerForge}.
  *
  * <p>The screen is Cloth Config's, generated from the same annotated data class Fabric and
- * NeoForge use. Official cloth ships no Forge build at 1.21.11, but the unofficial
- * cloth-config-forge port does, so all three loaders share one implementation instead of
- * this module carrying a hand written screen.
+ * NeoForge use. Cloth is OPTIONAL on Forge (see {@link ClothCompat}), so the button is
+ * registered either way and goes nowhere when Cloth is absent.
  *
  * <p><b>The {@code BiFunction<Minecraft, Screen, Screen>} form is used deliberately.</b>
  * The shorter {@code Function<Screen, Screen>} constructor only exists from Forge 47, and
@@ -26,12 +25,12 @@ final class WanderingTravelerConfigScreenRegistrar {
     }
 
     static void register() {
-        // Before anything reads a setting.
-        TravelerClothConfig.Plumbing.register();
+        // Before anything reads a setting, and only if Cloth is actually installed.
+        ClothCompat.register();
 
         ModLoadingContext.get().registerExtensionPoint(
                 ConfigScreenHandler.ConfigScreenFactory.class,
                 () -> new ConfigScreenHandler.ConfigScreenFactory(
-                        (minecraft, parent) -> TravelerClothConfig.Plumbing.screen(parent)));
+                        (minecraft, parent) -> ClothCompat.screen(parent)));
     }
 }

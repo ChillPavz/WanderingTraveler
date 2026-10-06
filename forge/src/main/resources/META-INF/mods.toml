@@ -28,14 +28,14 @@ versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "CLIENT"
 
-# Cloth Config, for the settings screen. Official cloth ships NO Forge build at this
-# Minecraft version, so Forge players need the unofficial cloth-config-forge port, which
-# carries the same mod id and the same version number. NAME IT ON THE STORE PAGE: the
-# launcher cannot auto install it from this dependency alone, because the two are separate
-# projects on Modrinth.
+# Cloth Config, for the settings screen. OPTIONAL on every Forge build: official cloth
+# ships Forge files at 1.20.1 and 1.21.1 only, and from 1.21.5 up the Forge build is the
+# unofficial cloth-config-forge port (same mod id, separate project). One store listing
+# cannot name the right one per version, so both are listed as optional and the mod runs
+# on its defaults, with no config screen, when neither is installed. See ClothCompat.
 [[dependencies.${mod_id}]]
 modId = "cloth_config"
-mandatory = true
+mandatory = false
 versionRange = "[1,)"
 ordering = "AFTER"
 side = "CLIENT"
