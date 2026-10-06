@@ -183,6 +183,9 @@ public final class TitleTracker {
             // the dimension title fades in from nothing, which is what a portal should
             // look like. The biome then queues behind it as designed.
             //
+            // A portal is a real journey, so the clear also forgets when each title last
+            // started: no biome on either side is held back by the repeat cooldown.
+            //
             // Done unconditionally, not just when dimension titles are on: a title from
             // the world you have left should not linger in the new one either way.
             TitleState.clear();
@@ -232,10 +235,26 @@ public final class TitleTracker {
         }
         wasGliding = false;
 
+        // NOT YET INSIDE IT. Returning leaves lastBiome alone, exactly like gliding, so
+        // the change is looked at again next tick and counts the moment the player is
+        // far enough in. Walking along an edge therefore never counts as entering
+        // anything. Skipped for the first biome in a world, which has nothing to be
+        // inside of yet.
+        if (lastBiome != null && !biome.equals(lastBiome)
+                && !isDeepInside(level, pos, biome, TravelerConfig.distanceIntoBiome)) {
+            return;
+        }
+
         // Set before the rest, so a biome that was declined is not reconsidered on every
         // tick the player stands in it. That matters most for the underground rule,
         // whose test walks a column of blocks. The one decline that must survive this is
         // the underground one, which records itself in hiddenUnderground below.
+        boolean changed = !biome.equals(lastBiome);
+        if (changed) {
+            // NO CATCH-UP. Whatever was waiting to be shown names a place the player has
+            // now left. If this biome is announced it queues itself again below.
+            TitleState.dropPending();
+        }
         lastBiome = biome;
         hiddenUnderground = false;
 
@@ -261,7 +280,27 @@ public final class TitleTracker {
             asPlainText = true;
         }
 
-        show(biome, "biome." + biome.getNamespace() + "." + biome.getPath(), asPlainText, false);
+        String translationKey = "biome." + biome.getNamespace() + "." + biome.getPath();
+        // THE SAME NAME IS NOT REPEATED WITHIN THE COOLDOWN, whatever lies between: a
+        // walk along a river that keeps stepping deep enough into each side would
+        // otherwise name River and Plains back and forth. Counted from when the title
+        // STARTED, so a title that was queued and dropped never blocks its own biome.
+        // Climbing out of a cave obeys it too; landing in the biome the player took off
+        // from does not, because the flight was the journey. A portal forgets every
+        // start time, so nothing is held back across one.
+        //
+        // A title lost without being shown (the queue is one deep, so clipping a river
+        // on the way into a Forest replaces the queued Forest) never started, so coming
+        // back into the Forest is its first real announcement and is not held back.
+        boolean landedWhereItTookOff = justLanded && !changed;
+        int cooldown = TravelerConfig.sameTitleCooldownTicks;
+        String name = Component.translatable(translationKey).getString();
+        if (!landedWhereItTookOff && cooldown > 0
+                && TitleState.startedSince(name, TitleState.now() - cooldown)) {
+            TitleState.returnTo(name);
+            return;
+        }
+        show(biome, translationKey, asPlainText, false);
     }
 
     /**
@@ -281,6 +320,50 @@ public final class TitleTracker {
      */
     private static boolean isChunkLoaded(ClientLevel level, int blockX, int blockZ) {
         return level.getChunkSource().hasChunk(blockX >> 4, blockZ >> 4);
+    }
+
+    /** Eight headings around the player, as unit offsets. */
+    private static final double[][] RING = {
+            {1, 0}, {0.7071, 0.7071}, {0, 1}, {-0.7071, 0.7071},
+            {-1, 0}, {-0.7071, -0.7071}, {0, -1}, {0.7071, -0.7071}};
+
+    /**
+     * Is every point within {@code distance} blocks of the player, at their height, in
+     * {@code biome}?
+     *
+     * <p>A border is a jagged staircase of 4x4x4 cells, fuzzed per block, so a player
+     * walking along one is in and out of it every second or so. Asking whether they are
+     * some way INTO the new biome, rather than merely over the line, turns all of that
+     * into nothing: an edge never qualifies. Two rings of eight points, at the full
+     * distance and at half of it, are enough to catch a sliver of the old biome reaching
+     * in; a single ring could straddle one.
+     *
+     * <p>Runs only on ticks where the biome underfoot differs from the one announced,
+     * which is a few ticks per crossing, so sixteen biome lookups are affordable.
+     * Points in chunks the client does not have are skipped rather than read: an
+     * unloaded chunk answers Plains with full confidence.
+     */
+    private static boolean isDeepInside(ClientLevel level, BlockPos pos, ResourceLocation biome,
+                                        int distance) {
+        if (distance <= 0) {
+            return true;
+        }
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int radius : new int[] {distance, (distance + 1) / 2}) {
+            for (double[] heading : RING) {
+                int x = pos.getX() + (int) Math.round(heading[0] * radius);
+                int z = pos.getZ() + (int) Math.round(heading[1] * radius);
+                if (!isChunkLoaded(level, x, z)) {
+                    continue;
+                }
+                ResourceLocation there = level.getBiome(cursor.set(x, pos.getY(), z))
+                        .unwrapKey().map(ResourceKey::location).orElse(null);
+                if (!biome.equals(there)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**
