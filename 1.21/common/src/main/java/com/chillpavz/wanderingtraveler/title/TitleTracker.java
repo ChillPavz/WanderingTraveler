@@ -422,7 +422,7 @@ public final class TitleTracker {
     private static int surfaceHeight(ClientLevel level, int x, int z) {
         int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos(x, top, z);
-        int limit = Math.max(level.getMinBuildHeight(), top - MAX_CANOPY);
+        int limit = Math.max(level.dimensionType().minY(), top - MAX_CANOPY);
         while (top > limit && level.getBlockState(cursor.setY(top - 1)).is(BlockTags.LEAVES)) {
             top--;
         }
@@ -450,8 +450,11 @@ public final class TitleTracker {
      */
     private static boolean reachesTheSurfaceNearby(
             ClientLevel level, BlockPos pos, ResourceLocation biome) {
-        // getMinBuildHeight here; it is renamed to getMinY in the 26.x generation.
-        int floor = level.getMinBuildHeight();
+        // NOT getMinBuildHeight: Mojang renamed it getMinY at 1.21.2, inside this band, and
+        // NeoForge runs on Mojang names, so naming either one fails on half the band with
+        // NoSuchMethodError. For a client level it is LevelReader's default, which is exactly
+        // dimensionType().minY(), and both of those are unchanged from 1.21 to 1.21.5.
+        int floor = level.dimensionType().minY();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int dx : SAMPLE_OFFSETS) {
             for (int dz : SAMPLE_OFFSETS) {

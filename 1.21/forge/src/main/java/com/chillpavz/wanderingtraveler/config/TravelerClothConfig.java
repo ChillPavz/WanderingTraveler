@@ -18,7 +18,6 @@ import me.shedaniel.clothconfig2.gui.entries.StringListListEntry;
 import me.shedaniel.clothconfig2.gui.entries.TooltipListEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.InteractionResult;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -301,11 +300,16 @@ public class TravelerClothConfig implements ConfigData {
             try {
                 ConfigHolder<TravelerClothConfig> holder = AutoConfig.register(
                         TravelerClothConfig.class, GsonConfigSerializer::new);
-                // The save listener returns net.minecraft.world.InteractionResult, not a
-                // Cloth type - one of the few places Cloth hands back a vanilla class.
+                // The save listener returns net.minecraft.world.InteractionResult, and that
+                // class changed inside this band: an enum up to 1.21.1, an interface from
+                // 1.21.2 whose SUCCESS has a different type. A jar naming SUCCESS fails with
+                // NoSuchFieldError on one side or the other, on every loader. Cloth 15 to 18
+                // only compare the result by identity: FAIL stops the save, PASS asks the
+                // next listener, and anything else saves. null is "anything else", which is
+                // exactly what SUCCESS did, without naming a field that moves.
                 holder.registerSaveListener((h, config) -> {
                     config.apply();
-                    return InteractionResult.SUCCESS;
+                    return null;
                 });
                 holder.getConfig().apply();
 
