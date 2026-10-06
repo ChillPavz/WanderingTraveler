@@ -7,9 +7,10 @@ import net.minecraft.client.gui.screens.Screen;
 /**
  * The only place in this module that is allowed to reach Cloth Config.
  *
- * <h2>Why this class exists on this band and on no other</h2>
- * Cloth is a REQUIRED dependency on every other branch and an OPTIONAL one here, and that
- * is forced rather than preferred. Cloth ships a Fabric file and a Forge file at 1.20 and
+ * <h2>Why Cloth is optional on this band</h2>
+ * Cloth is OPTIONAL on both loaders here and on every Forge build, and REQUIRED only on
+ * the other bands' Fabric and NeoForge builds. Here that is forced rather than preferred.
+ * Cloth ships a Fabric file and a Forge file at 1.20 and
  * 1.20.1 and <b>no neoforge-tagged file at all</b> - verified against the Modrinth API per
  * game version, not assumed. This band's Forge jar is also the NeoForge jar, because
  * NeoForge 47.1.x provides the {@code forge} mod id, so a NeoForge player installing this
