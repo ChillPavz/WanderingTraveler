@@ -413,13 +413,14 @@ public final class TitleState {
         }
 
         if (phase == Phase.GONE) {
-            if (pendingText != null) {
-                if (afterPause > 0) {
-                    afterPause--;
-                } else {
-                    begin(pendingKey, pendingText, pendingArtwork, pendingIsDimension,
-                            pendingScale);
-                }
+            // The pause runs out whether or not anything is waiting. Counting it down only
+            // while a title was pending left it armed after a dimension title with no biome
+            // behind it, so the next title, however much later, started half a second late.
+            if (afterPause > 0) {
+                afterPause--;
+            } else if (pendingText != null) {
+                begin(pendingKey, pendingText, pendingArtwork, pendingIsDimension,
+                        pendingScale);
             }
             return;
         }
