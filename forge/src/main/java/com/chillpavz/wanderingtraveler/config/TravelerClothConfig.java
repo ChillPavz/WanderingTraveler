@@ -166,10 +166,29 @@ public class TravelerClothConfig implements ConfigData {
     @ConfigEntry.Gui.Tooltip
     public int fadeOutTicks = 16;
 
+    // The slider this replaced was a minimum GAP between titles, and it was the wrong
+    // shape: it made a title WAIT, then let it replace the one in front of it without a
+    // fade out.  What a player actually wants defended is that a title can be read, so
+    // that is what the number now says.  Capped by Time on Screen in use.
     @ConfigEntry.Category("timing")
-    @ConfigEntry.BoundedDiscrete(min = 0, max = 200)
-    @ConfigEntry.Gui.Tooltip(count = 3)
-    public int minimumTimeBetweenTitles = 50;
+    @ConfigEntry.BoundedDiscrete(min = 0, max = 60)
+    @ConfigEntry.Gui.Tooltip(count = 2)
+    public int minimumTimeOnScreen = 20;
+
+    // Here rather than under Repeats (owner, Oct 2026): it decides WHEN a title appears,
+    // which is what this tab is about.
+    @ConfigEntry.Category("timing")
+    @ConfigEntry.BoundedDiscrete(min = 0, max = 16)
+    @ConfigEntry.Gui.Tooltip(count = 2)
+    public int distanceIntoABiome = 3;
+
+    @ConfigEntry.Category("timing")
+    @ConfigEntry.Gui.Tooltip(count = 2)
+    public boolean fasterFadesWhenBusy = false;
+
+    @ConfigEntry.Category("timing")
+    @ConfigEntry.Gui.Tooltip(count = 2)
+    public boolean endTitleWhenYouLeave = false;
 
     // ---------------------------------------------------------------- situations
     @ConfigEntry.Category("situations")
@@ -192,6 +211,14 @@ public class TravelerClothConfig implements ConfigData {
     @ConfigEntry.BoundedDiscrete(min = 1, max = 50)
     @ConfigEntry.Gui.Tooltip
     public int rememberLastTitles = 5;
+
+    // In seconds rather than ticks: it is a span of walking, not part of a title's own
+    // timeline like the timing sliders. Under Repeats (owner, Oct 2026): it is about the same
+    // name coming back, not about when a title appears. Off by default.
+    @ConfigEntry.Category("suppression")
+    @ConfigEntry.BoundedDiscrete(min = 0, max = 120)
+    @ConfigEntry.Gui.Tooltip(count = 2)
+    public int sameTitleCooldown = 0;
 
     @ConfigEntry.Category("suppression")
     @ConfigEntry.Gui.Tooltip
@@ -229,7 +256,11 @@ public class TravelerClothConfig implements ConfigData {
         TravelerConfig.fadeInTicks = fadeInTicks;
         TravelerConfig.holdTicks = timeOnScreenTicks;
         TravelerConfig.fadeOutTicks = fadeOutTicks;
-        TravelerConfig.minTicksBetweenTitles = minimumTimeBetweenTitles;
+        TravelerConfig.minTimeOnScreenTicks = minimumTimeOnScreen;
+        TravelerConfig.fasterFadesWhenBusy = fasterFadesWhenBusy;
+        TravelerConfig.distanceIntoBiome = distanceIntoABiome;
+        TravelerConfig.sameTitleCooldownTicks = sameTitleCooldown * 20;
+        TravelerConfig.endTitleWhenLeaving = endTitleWhenYouLeave;
 
         TravelerConfig.hideWhileGliding = hideWhileFlyingWithElytra;
         TravelerConfig.undergroundTitles = surfaceBiomesWhileUnderground;

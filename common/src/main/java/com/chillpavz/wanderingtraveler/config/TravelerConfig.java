@@ -179,19 +179,44 @@ public final class TravelerConfig {
     public static int fadeOutTicks = 16;
 
     /**
-     * How long a title keeps the screen before the next one may take it, in ticks.
+     * Ticks a title is GUARANTEED at full opacity before the next one may end its hold.
      *
-     * <p>Crossing several borders quickly used to stamp each title straight over the one
-     * before it, so none of them could be read - worst on an elytra, where a handful of
-     * biomes go past in a second. A new title now waits its turn, and while it waits it
-     * is REPLACED by any newer one, so a run of five biomes shows the first and the last
-     * and skips the three in between rather than queueing all five.
+     * <p>This replaced a minimum GAP between titles, and the difference is the whole of
+     * the fix. A gap made a new title wait, and when it finally arrived it replaced the
+     * one in front of it, so the outgoing fade out never happened and the incoming title
+     * appeared up to two and a half seconds after the border was crossed. Nothing waits
+     * now: crossing a border ends the current title's hold.
      *
-     * <p>50 ticks is two and a half seconds, which is long enough to read a title and
-     * short enough that the one waiting behind it does not feel stale. 0 restores the
-     * old behaviour of every title replacing the last one at once.
+     * <p>What this number buys is the one thing that has to be defended when a player is
+     * moving fast: that each title is actually READ. Below it nothing may interrupt, so
+     * a run of borders cannot turn into a strobe of half drawn names. It is also, with
+     * the two fades, the fastest titles can follow each other: 8 + 20 + 16 ticks is one
+     * title per 2.2 seconds at most, close to the old gap's calm without its wait.
+     *
+     * <p>20 since 1.2.0 (owner, Oct 2026: a full second at full opacity), was 10. Capped at
+     * {@link #holdTicks} in use, so it can never make a title outlive its own configured
+     * hold. 0 lets every arrival end the hold at once.
      */
-    public static int minTicksBetweenTitles = 50;
+    public static int minTimeOnScreenTicks = 20;
+
+    /**
+     * Shorten both fades when borders arrive faster than a whole title takes.
+     *
+     * <p>The 1.1.0 behaviour, kept as an option. Off by default (owner, Oct 2026): titles
+     * kept up, but the shortened fades read as rushed, and a biome title behind a
+     * dimension title faded in over three ticks.
+     */
+    public static boolean fasterFadesWhenBusy = false;
+
+    /**
+     * When the player arrives somewhere that will not be announced (it is the title just
+     * shown, or it was shown too recently), cut the title of the place they have left.
+     *
+     * <p>Off by default (owner, Oct 2026): the title plays out. Cutting it was what 1.2.0's
+     * quick returns did, and with a short repeat cooldown it brings back a run of cuts
+     * along a border.
+     */
+    public static boolean endTitleWhenLeaving = false;
 
     // ----------------------------------------------------------------- situations
     /**
@@ -267,6 +292,43 @@ public final class TravelerConfig {
 
     /** How many recently shown titles to remember. Only used by NOT_SEEN_RECENTLY. */
     public static int rememberLastTitles = 5;
+
+    /**
+     * Ticks before the same title may be shown again, counted from when it last STARTED.
+     *
+     * <p>Replaces two 1.2.0 rules: Ignore Quick Returns (coming back into a biome within
+     * five seconds announced nothing and cut the title on screen) and "never the same
+     * title twice in a row", which had no time limit. Both suppressed real arrivals by a
+     * rule the player could not see; this one is a plain promise that a name is not
+     * repeated within the cooldown, whatever lies between. With Distance Into a Biome
+     * already ignoring edges, it is what stops a walk along a river or a beach naming the
+     * same two biomes back and forth.
+     *
+     * <p>Applies to border crossings and to climbing out of a cave into a biome that was
+     * hidden underground. Not to landing from a glide, which always announces where the
+     * player lands. 0 lets a name repeat as soon as its title has left the screen.
+     *
+     * <p>OFF by default (owner, Oct 2026, after play testing): a title that shows is better
+     * than one that does not, and a missing title reads as a bug. Distance Into a Biome
+     * already keeps a walk along a border calm without it. Measured for anyone tuning it:
+     * zigzagging across a border showed 4 titles at 10 s, 3 at 15 s and 2 at 20 s, and 30 s
+     * changed nothing more.
+     */
+    public static int sameTitleCooldownTicks = 0;
+
+    /**
+     * Blocks the player must be inside a new biome, in every direction, before it counts.
+     *
+     * <p>Walking along an edge is then not entering anything, so it announces nothing.
+     * The cost is narrow biomes: a river or a beach narrower than twice this is never
+     * announced by walking straight across it. 0 counts the moment the line is crossed.
+     *
+     * <p>3 blocks (owner, Oct 2026, from measured routes; was 4): a title is fully on
+     * screen about 1.0 s after the border at walking pace against 1.3 s, for one more title
+     * per half minute walking along a riverbank. 2 doubled the riverbank titles, 0 gave
+     * twelve or more across the edge walks, and above 4 only made titles later.
+     */
+    public static int distanceIntoBiome = 3;
 
     /**
      * Do not announce the biome you spawn into.
