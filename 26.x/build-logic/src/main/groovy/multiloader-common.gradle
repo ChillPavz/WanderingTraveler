@@ -16,7 +16,7 @@ java {
 }
 
 tasks.withType(Jar).configureEach {
-    from(rootProject.file('LICENSE')) {
+    from(rootProject.file('../LICENSE') /* the repository's one LICENSE */) {
         rename { "${it}_${mod_name}" }
     }
 }
