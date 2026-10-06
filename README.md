@@ -28,17 +28,14 @@ No mixins, at all. Nothing is injected into another mod's code or into a Minecra
 | | Fabric | NeoForge | Forge |
 |---|---|---|---|
 | Fabric API | required | | |
-| Cloth Config | required | required | |
-| Cloth Config Forge | | | required |
+| Cloth Config | required | required | optional, adds the config screen |
 | Mod Menu | optional, adds the Config button | | |
 
 Nothing is bundled. Cloth Config is LGPL-3.0 and stays a separate download for that reason.
 NeoForge and Forge both supply their own Config button, so Mod Menu is only useful on Fabric.
 
-**Forge needs a different Cloth project.** Official Cloth Config ships no Forge build at this
-Minecraft version, so Forge players install `cloth-config-forge` instead. It carries the same mod
-id and the same version number, but it is a separate download and the launcher cannot fetch it
-automatically from the dependency alone.
+**Cloth Config is optional on Forge.** Without it the titles run on their default settings and the
+Config button does nothing. Install Cloth Config's Forge build to change the settings.
 
 ## Adding titles for other biomes
 
