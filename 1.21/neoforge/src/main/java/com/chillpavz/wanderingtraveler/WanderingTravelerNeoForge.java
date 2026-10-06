@@ -1,17 +1,14 @@
 package com.chillpavz.wanderingtraveler;
 
 import com.chillpavz.wanderingtraveler.config.TravelerClothConfig;
-import com.chillpavz.wanderingtraveler.title.TitleArt;
 import com.chillpavz.wanderingtraveler.title.TitleRenderer;
 import com.chillpavz.wanderingtraveler.title.TitleTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
@@ -33,21 +30,16 @@ public class WanderingTravelerNeoForge {
         container.registerExtensionPoint(IConfigScreenFactory.class,
                 (mod, parent) -> TravelerClothConfig.Plumbing.screen(parent));
 
-        // RegisterClientReloadListenersEvent and RegisterGuiLayersEvent are MOD bus events -
-        // both implement IModBusEvent - while ClientTickEvent is a GAME bus event.
-        // Registering either on the wrong bus fails silently at runtime.
-        modBus.addListener(WanderingTravelerNeoForge::onRegisterReloadListeners);
+        // The reload events and RegisterGuiLayersEvent are MOD bus events - all implement
+        // IModBusEvent - while ClientTickEvent is a GAME bus event. Registering either on
+        // the wrong bus fails silently at runtime.
+        //
+        // The title glyphs have to be DISCOVERED rather than listed: an unknown font id is a
+        // silent no-op in vanilla, so the mod must know what exists before it asks. The
+        // reload event changed at NeoForge 21.4, inside this jar's range; see ReloadHook.
+        ReloadHook.register(modBus);
         modBus.addListener(WanderingTravelerNeoForge::onRegisterGuiLayers);
         NeoForge.EVENT_BUS.addListener(WanderingTravelerNeoForge::onClientTick);
-    }
-
-    private static void onRegisterReloadListeners(RegisterClientReloadListenersEvent event) {
-        // The title glyphs have to be DISCOVERED rather than listed: an unknown font id
-        // is a silent no-op in vanilla, so the mod must know what exists before it asks.
-        //
-        // RegisterClientReloadListenersEvent here, and it takes NO id. The 26.x branch
-        // uses AddClientReloadListenersEvent, which is a sorted event and does take one.
-        event.registerReloadListener((ResourceManagerReloadListener) TitleArt::reload);
     }
 
     private static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {
