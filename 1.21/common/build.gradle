@@ -32,10 +32,11 @@ configurations {
 // fonts, the icon and the lang file. Every loader takes them alongside this module's own.
 sourceSets.main.java.srcDir('../../shared/java')
 
+// Every source folder is published on its own: src/main, this band's era folders and
+// shared/java. The template's sourceDirectories.singleFile throws once there is more than one.
 artifacts {
-    commonJava file('src/main/java')
-    commonJava file('../../shared/java')
-    commonResources sourceSets.main.resources.sourceDirectories.singleFile
+    sourceSets.main.java.srcDirs.findAll { it.exists() }.each { commonJava it }
+    sourceSets.main.resources.srcDirs.findAll { it.exists() }.each { commonResources it }
     commonResources file('../../shared/resources')
 }
 

@@ -13,6 +13,14 @@ java {
     withJavadocJar()
 }
 
+// ERA SOURCE FOLDERS. What changes shape inside the 1.21.x line lives in src/<era>/java and
+// src/<era>/resources; the band's versions file lists the eras it compiles, e.g. 1.21.6 takes
+// "1.21.6", "1.21-1.21.6" and "1.21.6-1.21.11". An era a module does not have is simply absent.
+eras.split(',').collect { it.trim() }.findAll { it }.each { era ->
+    sourceSets.main.java.srcDir("src/${era}/java")
+    sourceSets.main.resources.srcDir("src/${era}/resources")
+}
+
 repositories {
     mavenCentral()
     // https://docs.gradle.org/current/userguide/declaring_repositories.html#declaring_content_exclusively_found_in_one_repository

@@ -2,6 +2,12 @@ plugins {
     id 'multiloader-common'
 }
 
+// THE CLOTH CONFIG DATA CLASS, once per era for every loader. It needs Cloth on the classpath,
+// so it cannot live in common, but its source is identical on all three loaders.
+eras.split(',').collect { it.trim() }.findAll { it }.each { era ->
+    sourceSets.main.java.srcDir(rootProject.file("cloth-config/${era}/java"))
+}
+
 configurations {
     commonJava{
         canBeResolved = true

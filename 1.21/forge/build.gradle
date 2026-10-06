@@ -11,7 +11,7 @@ base {
 }
 
 minecraft {
-    // 1.21.1, not the branch's 1.21: see forge_minecraft_version in gradle.properties.
+    // forge_minecraft_version, not minecraft_version: Forge's 1.21 jar compiles at 1.21.1.
     mappings channel: 'official', version: forge_minecraft_version
 
     copyIdeResources = true //Calls processResources when in dev
@@ -66,16 +66,23 @@ minecraft {
 
 sourceSets.main.resources.srcDir 'src/generated/resources'
 
+repositories {
+    // Cloth for Forge comes from two places: shedaniel's own maven at 1.21.1, and the
+    // unofficial cloth-config-forge port, published on MODRINTH, at 1.21.11 (official Cloth
+    // stops shipping Forge builds after 1.21.3). Same mod id, `cloth_config`, either way.
+    exclusiveContent {
+        forRepository { maven { url = 'https://api.modrinth.com/maven' } }
+        filter { includeGroup('maven.modrinth') }
+    }
+}
+
 
 
 dependencies {
     minecraft "net.minecraftforge:forge:${forge_minecraft_version}-${forge_version}"
 
-    // OFFICIAL Cloth Config, from shedaniel's own maven. It ships a real Forge build at
-    // 1.21 and 1.21.1 and stops there, which is exactly why the Forge jar declares a
-    // narrower Minecraft range than the Fabric and NeoForge ones on this branch. The
-    // unofficial cloth-config-forge port that the 1.21.11 branch uses is NOT needed here.
-    implementation("me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}")
+    // Which Cloth artifact is per band: see forge_cloth_artifact in versions/.
+    implementation(forge_cloth_artifact)
 }
 
 publishing {

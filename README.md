@@ -107,43 +107,60 @@ setting it already contains. Delete it to pick up new defaults.
 
 ## Repository layout
 
-One folder per band of Minecraft versions. Each is a complete Gradle build of its own, and every one
+One folder per toolchain generation. Each is a complete Gradle build of its own, and every one
 builds the same mod version.
 
-| Folder | Jars it builds | Minecraft | Build with |
+| Folder | Builds | Minecraft | Gradle runs on |
 |---|---|---|---|
 | `26.x` | Fabric, NeoForge | 26.1 to 26.3 | JDK 25 |
-| `1.21.11` | NeoForge, Forge | 1.21.11 | JDK 24 |
-| `1.21.6` | Fabric | 1.21.6 to 1.21.11 | JDK 24 |
-| `1.21.6` | NeoForge | 1.21.6 to 1.21.10 | JDK 24 |
-| `1.21` | Fabric, NeoForge | 1.21 to 1.21.5 | JDK 24 |
-| `1.21` | Forge | 1.21.1 | JDK 24 |
+| `1.21` | three builds, one per band, see below | 1.21 to 1.21.11 | JDK 24 |
 | `1.20.1` | Fabric, Forge | 1.20 and 1.20.1 | JDK 22 |
 
-A jar is named after the newest version it serves, so the folder name is the build input and not
-the coverage. The JDK is what Gradle and its plugins need to run, not what the jar targets: the
+`1.21` builds the whole 1.21.x line from one source tree. `-Pmc` picks a file in `1.21/versions/`
+that holds everything that changes with Minecraft, including which loaders the band builds and which
+era source folders it compiles:
+
+| `-Pmc` | Jars | Serves |
+|---|---|---|
+| `1.21` | Fabric, NeoForge | 1.21 to 1.21.5 |
+| `1.21` | Forge | 1.21.1 |
+| `1.21.6` | Fabric | 1.21.6 to 1.21.11 |
+| `1.21.6` | NeoForge | 1.21.6 to 1.21.10 |
+| `1.21.11` | NeoForge, Forge | 1.21.11 |
+
+A jar is named after the newest version it serves, so all of them sit side by side in each loader's
+`build/libs`. The JDK is what Gradle and its plugins need to run, not what the jar targets: the
 classes are compiled for the Java version Mojang requires (17 at 1.20.x, 21 at 1.21.x, 25 at 26.x).
 
 | Path | What it holds |
 |---|---|
 | `shared/java/` | Code that is identical in every band: title timing, the config holder, the platform plumbing |
 | `shared/resources/` | The artwork, the fonts, the icon and the translations, identical in every band |
-| `<band>/common/` | Shared code that differs by version: title discovery, the tracker, the renderer |
-| `<band>/fabric/`, `neoforge/`, `forge/` | Loader entry points and the Cloth Config data class |
-| `<band>/tools/audit_jar.py` | The jar audit described below |
+| `<folder>/common/` | Shared code that differs by version: title discovery, the tracker, the renderer |
+| `<folder>/fabric/`, `neoforge/`, `forge/` | Loader entry points |
+| `1.21/<module>/src/<era>/` | What changes shape inside 1.21.x; `1.21-1.21.6` and `1.21.6-1.21.11` hold files two builds share |
+| `1.21/cloth-config/<era>/` | The Cloth Config data class, one source per era, compiled into every loader |
+| `<folder>/tools/audit_jar.py` | The jar audit described below |
 
-Each band's `common` module compiles `shared/java` with its own sources and hands both, and
-`shared/resources`, to its loaders, so a band folder builds only from inside this repository. The Cloth Config class is duplicated across a band's
-loader modules on purpose and must stay identical; the audit checks that. It cannot live in `common`,
-because loader dependencies are not on its classpath.
+Each folder's `common` module compiles `shared/java` with its own sources and hands both, and
+`shared/resources`, to its loaders, so a folder builds only from inside this repository. In `1.20.1`
+and `26.x` the Cloth Config class is duplicated across the loader modules on purpose and must stay
+identical; the audit checks that. It cannot live in `common`, because loader dependencies are not on
+its classpath.
 
 ## Building
 
-From inside a band folder:
+From inside `1.20.1` or `26.x`:
 
 ```
 ./gradlew build
 py -3 tools/audit_jar.py
+```
+
+From inside `1.21`, every band and the audit in one go (or name the bands to build):
+
+```
+py -3 tools/build_all.py
 ```
 
 Jars land in each loader's `build/libs`. Take the plain jar, not the `-sources` or `-javadoc` one.

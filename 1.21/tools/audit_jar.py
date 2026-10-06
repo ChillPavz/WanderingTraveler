@@ -405,34 +405,36 @@ def audit(jar_path, loader, problems):
              % (len(orphans), orphans[:3]))
 
 
-def config_classes_match(jars, problems):
-    """The two loader copies of the annotated Cloth class must not drift apart.
+def cloth_sources():
+    """Every era's copy of the annotated Cloth class: one per era, shared by all loaders."""
+    base = os.path.join(ROOT, 'cloth-config')
+    if not os.path.isdir(base):
+        return {}
+    found = {}
+    for era in sorted(os.listdir(base)):
+        src = os.path.join(base, era, 'java', 'com', 'chillpavz', 'wanderingtraveler', 'config',
+                           'TravelerClothConfig.java')
+        if os.path.isfile(src):
+            found[era] = src
+    return found
 
-    common compiles against a bare vanilla jar with no loader dependencies, so it cannot
-    see Cloth and the annotated class has to exist once per loader module. Nothing makes
-    an edit to one reach the other, and a config screen that offers different options on
-    different loaders is exactly the kind of fault nobody notices until a player reports
-    it. The copies are byte-identical source, so they compile to byte-identical classes.
+
+def config_classes_match(jars, problems):
+    """Every jar ships the compiled Cloth class.
+
+    The loaders can no longer drift apart: the annotated class has ONE source per era, in
+    cloth-config/<era>/, compiled into every loader module of the bands that use that era
+    (it needs Cloth on the classpath, so it cannot live in common). What is left to check is
+    that it was actually compiled in.
     """
-    # COMPARE THE SOURCE, NOT THE COMPILED CLASS. The 26.x branch compared class bytes
-    # and got away with it because both loaders compiled the same way. With three modules
-    # the same source produces class files of identical SIZE whose constant pools are
-    # ORDERED differently, because each compiles against a different Minecraft mapping and
-    # a different cloth artifact. That is a javac artifact, not drift, and comparing the
-    # source is the more direct statement of the invariant anyway.
-    seen = {}
-    for loader in jars:
-        src = os.path.join(ROOT, loader, 'src', 'main', 'java', 'com', 'chillpavz',
-                           'wanderingtraveler', 'config', 'TravelerClothConfig.java')
-        if os.path.exists(src):
-            seen[loader] = open(src, 'rb').read()
-    if len(seen) > 1 and len(set(seen.values())) != 1:
-        problems.append('the %s copies of TravelerClothConfig.java have drifted apart; '
-                        'they must stay identical' % ', '.join(sorted(seen)))
-    for loader, path in jars.items():
-        with zipfile.ZipFile(path) as zf:
-            if CONFIG_CLASS not in zf.namelist():
-                problems.append('%s ships no compiled TravelerClothConfig' % loader)
+    if not cloth_sources():
+        problems.append('no cloth-config/<era>/ source of TravelerClothConfig was found')
+    for loader, paths in jars.items():
+        for path in paths:
+            with zipfile.ZipFile(path) as zf:
+                if CONFIG_CLASS not in zf.namelist():
+                    problems.append('%s ships no compiled TravelerClothConfig'
+                                    % os.path.basename(path))
 
 
 def config_annotations_match(problems):
@@ -440,7 +442,7 @@ def config_annotations_match(problems):
 
     THE ONE SOURCE-LEVEL CHECK IN THIS FILE, and it is here because the alternative is
     parsing RuntimeVisibleAnnotations out of the class file for the same answers. Reading
-    fabric's copy alone is enough: the two are asserted byte-identical above.
+    every era's copy is checked, since the eras genuinely differ.
 
     Three faults, all of which are silent and all of which have been seen:
       * a @Tooltip(count = N) with fewer than N lines in the lang file. Cloth does NOT
@@ -451,13 +453,17 @@ def config_annotations_match(problems):
         exactly over the value you are dragging to; the owner could not read the numbers
         they were trying to pick. Sliders carry their unit in the label instead.
     """
-    src = os.path.join(ROOT, 'fabric', 'src', 'main', 'java', 'com', 'chillpavz',
-                       'wanderingtraveler', 'config', 'TravelerClothConfig.java')
     lang = os.path.join(ROOT, '..', 'shared', 'resources', 'assets', MOD_ID,
                         'lang', 'en_us.json')
-    if not (os.path.isfile(src) and os.path.isfile(lang)):
+    sources = cloth_sources()
+    if not (sources and os.path.isfile(lang)):
         problems.append('the config class or the lang file is missing from the source tree')
         return
+    for src in sources.values():
+        config_annotations_match_one(src, lang, problems)
+
+
+def config_annotations_match_one(src, lang, problems):
     with open(lang, encoding='utf-8') as f:
         keys = json.load(f)
     text = open(src, encoding='utf-8').read()
@@ -512,7 +518,8 @@ def main():
     found = 0
     jars = {}
     for loader in ('fabric', 'neoforge', 'forge'):
-        # Forge has no HUD overlay API at 1.21.6, so this band may ship without it.
+        # Each band builds only the loaders it can run (see versions/); build/libs holds
+        # every band built so far, side by side, so a loader can have several jars.
         if not os.path.isdir(os.path.join(ROOT, loader, 'build', 'libs')):
             continue
         libs = os.path.join(ROOT, loader, 'build', 'libs')
@@ -523,8 +530,8 @@ def main():
             if not name.endswith('.jar') or 'sources' in name or 'javadoc' in name:
                 continue
             found += 1
-            jars[loader] = os.path.join(libs, name)
-            audit(jars[loader], loader, problems)
+            jars.setdefault(loader, []).append(os.path.join(libs, name))
+            audit(jars[loader][-1], loader, problems)
 
     config_classes_match(jars, problems)
     config_annotations_match(problems)
