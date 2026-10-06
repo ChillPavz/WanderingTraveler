@@ -1,0 +1,40 @@
+modLoader = "javafml"
+loaderVersion = "${neoforge_loader_version_range}"
+license = "${license}"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${version}"
+displayName = "${mod_name}"
+credits = "${credits}"
+logoFile = "assets/${mod_id}/icon.png"
+authors = "${mod_author}"
+description = '''${description}'''
+# Client-only: nothing here runs on a dedicated server, so a server must not refuse a
+# client that has it.
+displayTest = "IGNORE_ALL_VERSION"
+
+[[dependencies.${mod_id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neoforge_version_range}"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.${mod_id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "CLIENT"
+
+# Cloth Config, for the settings screen. Required and separately downloaded, never
+# jar-in-jar'd: it is LGPL-3.0, which is unproblematic as a separate download and is not
+# unproblematic bundled. Note the mod id is `cloth_config` here while the Fabric
+# metadata depends on `cloth-config2`, which cloth PROVIDES - the two are the same mod.
+[[dependencies.${mod_id}]]
+modId = "cloth_config"
+type = "required"
+versionRange = "[1,)"
+ordering = "NONE"
+side = "CLIENT"
