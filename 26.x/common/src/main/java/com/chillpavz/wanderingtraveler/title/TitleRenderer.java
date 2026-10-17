@@ -6,8 +6,13 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import org.joml.Matrix3x2fStack;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 /**
  * Draws the current title. Shared by both loaders; only the hook differs.
@@ -19,6 +24,26 @@ public final class TitleRenderer {
 
     /** Kept clear of the screen edge, in GUI-scaled pixels. */
     private static final int EDGE_MARGIN = 8;
+
+    /**
+     * {@code GuiGraphicsExtractor.blit(RenderPipeline, Identifier, int x, int y, float u,
+     * float v, int width, int height, int textureWidth, int textureHeight, int argb)},
+     * found once by reflection, and the pipeline to pass it.
+     *
+     * <p><b>WHY REFLECTION: ONE JAR SERVES 26.1 TO 26.3, AND 26.3 MOVED THE TYPE.</b>
+     * {@code RenderPipeline} is {@code com.mojang.blaze3d.pipeline} on 26.1 and 26.2,
+     * {@code com.mojang.renderpearl.api.pipeline} on 26.3 (and back again on the 26.4
+     * snapshots), so a direct call compiled here names the 26.2 class and throws
+     * {@code NoSuchMethodError} on 26.3. The method's name and every other parameter are
+     * the same on all of them, so the type is taken from the {@code GUI_TEXTURED} field
+     * itself and never written down. 26.x is not obfuscated, so the name is stable.
+     *
+     * <p>DEGRADE, NEVER CRASH: if the lookup or a call fails, it logs once and every
+     * title from then on draws as plain text.
+     */
+    private static Method blit;
+    private static Object pipeline;
+    private static boolean blitLookedUp;
 
     private TitleRenderer() {
     }
@@ -56,10 +81,11 @@ public final class TitleRenderer {
 
         // Both the artwork and the text are measured in FONT UNITS here, so the anchor
         // and the size bands work on the same numbers whichever path is in play.
-        int width = font.width(text);
-        // A title glyph is authored with ascent 7, the same as vanilla's own font, which
-        // puts its top exactly on the draw y.
-        int height = artwork != null ? artwork.height() : font.lineHeight;
+        if (artwork != null && !blitAvailable()) {
+            artwork = null;
+        }
+        int width = artwork != null ? artwork.widthUnits() : font.width(text);
+        int height = artwork != null ? TitleImages.HEIGHT_UNITS : font.lineHeight;
 
         // THE SIZE BAND IS CHOSEN BY DRAWN WIDTH, which is the length of the name in the
         // only unit that matters on screen. Plain text takes one scale for every name:
@@ -87,22 +113,26 @@ public final class TitleRenderer {
         int x = TravelerConfig.anchor.x(screenW, boxW) + TravelerConfig.offsetX;
         int y = TravelerConfig.anchor.y(screenH, boxH) + TravelerConfig.offsetY;
 
-        // THE ARTWORK IS ALWAYS WHITE. A full-colour glyph is multiplied by the text
-        // colour, so the colour option can only ever darken it; it applies to the plain
-        // text path, which is greyscale and takes a tint properly.
         int opacity = Math.round(alpha * 255.0F) << 24;
-        int rgb = artwork != null ? 0xFFFFFF : TravelerConfig.textColor & 0xFFFFFF;
+        int rgb = TravelerConfig.textColor & 0xFFFFFF;
 
-        // No shadow behind the artwork either - it draws its own, in the art. The
-        // incumbent's "black boxes" report turned out to be vanilla's Accessibility ->
-        // Text Background setting interacting with its draw path, and drawing plain
-        // glyphs cannot reproduce it.
+        // No shadow behind the artwork - it draws its own, in the art.
         boolean shadow = artwork == null && TravelerConfig.textShadow;
 
         Matrix3x2fStack pose = gfx.pose();
         pose.pushMatrix();
         pose.translate(x, y);
         pose.scale(scale, scale);
+        if (artwork != null) {
+            // One source pixel per unit inside the pose, so the whole image is one quad.
+            // THE ARTWORK IS ALWAYS WHITE: the blit multiplies by the colour, so the
+            // colour option could only darken it; only the alpha is the fade.
+            float unit = TitleImages.HEIGHT_UNITS / (float) artwork.height();
+            pose.scale(unit, unit);
+            drawImage(gfx, artwork, opacity | 0xFFFFFF);
+            pose.popMatrix();
+            return;
+        }
         if (shadow) {
             // DRAWN BY HAND rather than through the draw call's shadow flag, because
             // that flag picks the colour itself - ARGB.scaleRGB(colour, 0.25f) - and
@@ -113,5 +143,35 @@ public final class TitleRenderer {
         }
         gfx.text(font, text, 0, 0, opacity | rgb, false);
         pose.popMatrix();
+    }
+
+    private static boolean blitAvailable() {
+        if (!blitLookedUp) {
+            blitLookedUp = true;
+            try {
+                Field field = RenderPipelines.class.getField("GUI_TEXTURED");
+                Method method = GuiGraphicsExtractor.class.getMethod("blit", field.getType(),
+                        Identifier.class, int.class, int.class, float.class, float.class,
+                        int.class, int.class, int.class, int.class, int.class);
+                pipeline = field.get(null);
+                blit = method;
+            } catch (Throwable t) {
+                Constants.LOG.warn("No GUI blit found on this version; titles will show as "
+                        + "plain text ({})", t.toString());
+            }
+        }
+        return blit != null;
+    }
+
+    private static void drawImage(GuiGraphicsExtractor gfx, TitleArt.Entry artwork, int argb) {
+        int w = artwork.width();
+        int h = artwork.height();
+        try {
+            blit.invoke(gfx, pipeline, artwork.texture(), 0, 0, 0.0F, 0.0F, w, h, w, h, argb);
+        } catch (Throwable t) {
+            blit = null;
+            Constants.LOG.warn("Title image draw failed; titles will show as plain text "
+                    + "from now on ({})", t.toString());
+        }
     }
 }

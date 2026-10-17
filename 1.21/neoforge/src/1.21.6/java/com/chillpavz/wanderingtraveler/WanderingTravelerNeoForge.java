@@ -42,8 +42,8 @@ public class WanderingTravelerNeoForge {
     }
 
     private static void onAddReloadListeners(AddClientReloadListenersEvent event) {
-        // The title glyphs have to be DISCOVERED rather than listed: an unknown font id
-        // is a silent no-op in vanilla, so the mod must know what exists before it asks.
+        // The title images have to be DISCOVERED rather than listed: a missing texture
+        // draws as the magenta box, so the mod must know what exists before it asks.
         event.addListener(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "titles"),
                 (ResourceManagerReloadListener) TitleArt::reload);
     }

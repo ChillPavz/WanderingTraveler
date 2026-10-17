@@ -58,27 +58,24 @@ NeoForge there.
 
 ## Adding titles for other biomes
 
-A resource pack can add a title for any biome or dimension, including one from another mod, with two
-files and no code. Nothing needs to be registered and nothing needs asking for.
+A resource pack can add a title for any biome or dimension, including one from another mod, with one
+PNG and no code. Nothing needs to be registered and nothing needs asking for.
 
-The mod lists its own font resources on every resource reload, so a title exists as soon as its font
-file does. The path is derived from the biome id, which is why there is no table to collide over:
+The mod lists its own title images on every resource reload, so a title exists as soon as its image
+does. The path is derived from the biome id, which is why there is no table to collide over:
 
 ```
-assets/wanderingtraveler/font/title/<namespace>/<path>.json
+assets/wanderingtraveler/textures/title/<namespace>/<path>.png
 ```
 
-For `terralith:cave_forest` that is `font/title/terralith/cave_forest.json`. The file is an ordinary
-font definition holding one or more `bitmap` providers, drawn left to right, each taking one
-codepoint from U+E000 upward; a `space` provider at U+E010 closes the joins. The simplest way to see
-the shape is to open one of the shipped files in the jar and point it at your own texture.
+For `terralith:cave_forest` that is `textures/title/terralith/cave_forest.png`. The image is drawn
+as one picture, scaled to the same height as every other title, so any width works. Crop it to the
+artwork: transparent margins are drawn too. The shipped titles are 288 pixels tall; a shorter image
+works, but is magnified on large screens and high GUI scales. Keep both sides under 8192 pixels,
+which is the largest texture some graphics cards accept.
 
-Two limits are worth knowing, because neither is reported anywhere when it is exceeded. A glyph
-image may not be larger than 256 pixels in either direction, and every provider in one title must
-declare the same `height`.
-
-Fonts merge across resource packs rather than replacing each other, so your pack does not have to
-contain ours and will not conflict with another pack that adds different biomes.
+A pack that ships an image at the same path as one of ours replaces that title, and packs that add
+different biomes do not conflict with each other.
 
 **Draw your own artwork.** Everything that ships with this mod is All Rights Reserved and may not be
 copied, retextured or reused, but the mechanism above is yours to use and needs no permission.
@@ -113,7 +110,7 @@ builds the same mod version.
 | Folder | Builds | Minecraft | Gradle runs on |
 |---|---|---|---|
 | `26.x` | Fabric, NeoForge | 26.1 to 26.3 | JDK 25 |
-| `1.21` | three builds, one per band, see below | 1.21 to 1.21.11 | JDK 24 |
+| `1.21` | four builds, one per band, see below | 1.21 to 1.21.11 | JDK 24 |
 | `1.20.1` | Fabric, Forge | 1.20 and 1.20.1 | JDK 22 |
 
 `1.21` builds the whole 1.21.x line from one source tree. `-Pmc` picks a file in `1.21/versions/`
@@ -122,8 +119,9 @@ era source folders it compiles:
 
 | `-Pmc` | Jars | Serves |
 |---|---|---|
-| `1.21` | Fabric, NeoForge | 1.21 to 1.21.5 |
+| `1.21` | Fabric, NeoForge | 1.21 to 1.21.1 |
 | `1.21` | Forge | 1.21.1 |
+| `1.21.2` | Fabric, NeoForge | 1.21.2 to 1.21.5 |
 | `1.21.6` | Fabric | 1.21.6 to 1.21.11 |
 | `1.21.6` | NeoForge | 1.21.6 to 1.21.10 |
 | `1.21.11` | NeoForge, Forge | 1.21.11 |
@@ -135,7 +133,7 @@ classes are compiled for the Java version Mojang requires (17 at 1.20.x, 21 at 1
 | Path | What it holds |
 |---|---|
 | `shared/java/` | Code that is identical in every band: title timing, the config holder, the platform plumbing |
-| `shared/resources/` | The artwork, the fonts, the icon and the translations, identical in every band |
+| `shared/resources/` | The artwork, the icon and the translations, identical in every band |
 | `<folder>/common/` | Shared code that differs by version: title discovery, the tracker, the renderer |
 | `<folder>/fabric/`, `neoforge/`, `forge/` | Loader entry points |
 | `1.21/<module>/src/<era>/` | What changes shape inside 1.21.x; `1.21-1.21.6` and `1.21.6-1.21.11` hold files two builds share |
@@ -165,7 +163,7 @@ py -3 tools/build_all.py
 
 Jars land in each loader's `build/libs`. Take the plain jar, not the `-sources` or `-javadoc` one.
 The audit checks the built jars rather than the source tree, which is the only check that sees what
-the game sees: every font definition and the texture it names, the config screen against its
+the game sees: every title image and its size, the config screen against its
 translations, the metadata, the icon, the class-file target, and on 1.20.1 whether each jar carries
 the member names its loader expects.
 

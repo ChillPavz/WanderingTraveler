@@ -1,22 +1,11 @@
 """Audit the BUILT JARS, which is the only check that sees what the game sees.
 
-Every fault this catches has already shipped once. The font pack failed in game with
-nothing but missing-glyph boxes on screen and 66 identical stack traces in the log,
-because of two separate bugs that a source-level review had already walked past:
-
-  * the provider type was written as "minecraft:bitmap". Most Minecraft registries take
-    a namespaced id and THIS ONE DOES NOT - the codec answers
-    `JsonParseException: Unknown element name:minecraft:bitmap` and every font in the
-    pack fails. Vanilla's own font files use the bare name.
-  * the font id carried a second "font/". A font id resolves ns:path back to
-    assets/ns/font/path.json, so the prefix must be stripped, and an unknown font id
-    throws nothing and logs nothing - it just draws missing-glyph boxes.
-
-The seam check was added after the same class of fault shipped a third time: 22 of the
-66 titles left a fraction of a font unit between their strips, and the ones whose error
-was positive drew a vertical tear straight through the letters. Nothing in the game
-reports that either, so it is measured here from the jar's own PNGs using vanilla's
-arithmetic.
+Every fault this catches has already shipped once. The titles were bitmap fonts
+until Oct 2026 and failed in game more than once with nothing in the log (a namespaced
+provider type, a font id with a second "font/", fractional seams between strips). They
+are single PNGs now, drawn as GUI textures, and the checks below assert what the mod
+needs from them: the path shape it derives the biome id from, a real PNG, a size every
+graphics card can upload, and no file left over from the font route.
 
 The config checks were added with the config screen. A renamed field is not a compile
 error and does not log: it just shows the player a raw translation key where an option
@@ -35,18 +24,13 @@ import zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MOD_ID = 'wanderingtraveler'
 
-# The provider names vanilla's codec actually accepts, read out of the 26.2 client jar
-# by grepping every assets/minecraft/font/**.json for "type". A namespaced form is
-# rejected, so this list is bare names on purpose.
-VALID_PROVIDERS = {'bitmap', 'reference', 'space', 'ttf', 'unihex'}
+# A GUI texture larger than the graphics card's maximum texture size fails to upload.
+# 8192 is supported by every card that runs these versions; the generator keeps under it.
+MAX_TEXTURE_PX = 8192
 
-# FontTexture.SIZE. A glyph larger than this in either dimension is dropped silently.
-MAX_GLYPH_PX = 256
-
-# The font-unit height every title glyph declares. The seam arithmetic below is
-# meaningless without it, so the checks further down fail loudly if a shipped font
-# ever disagrees with this number.
-DECLARED_HEIGHT = 12
+# A title is drawn 12 GUI units tall times the artwork scale; under 12 px it is magnified
+# even at GUI scale 1, which only happens if an export went badly wrong.
+MIN_IMAGE_HEIGHT = 12
 
 # Cloth's own i18n scheme, read out of ConfigScreenProvider in cloth-config 26.2.155:
 # "text.autoconfig.%s" then ".title", ".category.%s", ".option.%s", and a tooltip at
@@ -348,105 +332,37 @@ def audit(jar_path, loader, problems):
         fail('mixin configs are declared but this mod ships none: %s' % stray)
 
     # --- the titles -------------------------------------------------------
-    fonts = sorted(n for n in names
-                   if n.startswith('assets/%s/font/' % MOD_ID) and n.endswith('.json'))
-    if not fonts:
-        fail('no title font definitions in the jar at all')
-
-    for font in fonts:
-        # The game turns assets/<ns>/font/<path>.json into the font id <ns>:<path>, so
-        # that is the id the mod has to produce. Asserting the shape here is what stops
-        # the extra-"font/" bug coming back through a refactor.
-        rel = font[len('assets/%s/font/' % MOD_ID):-len('.json')]
-        parts = rel.split('/')
-        if len(parts) != 3 or parts[0] != 'title':
-            fail('%s is not title/<namespace>/<name>.json, so the mod cannot derive a '
-                 'biome id from it' % font)
-
-        try:
-            data = json.loads(zf.read(font))
-        except Exception as e:
-            fail('%s does not parse: %s' % (font, e))
+    # One PNG per title at textures/title/<namespace>/<name>.png, drawn as a GUI texture.
+    # The mod maps that path to the biome id <namespace>:<name>, so the shape is what has
+    # to hold; a font left over from the old strip route would ship dead weight.
+    prefix = 'assets/%s/textures/title/' % MOD_ID
+    images = sorted(n for n in names if n.startswith(prefix) and not n.endswith('/'))
+    if not images:
+        fail('no title images in the jar at all')
+    leftovers = sorted(n for n in names
+                       if n.startswith('assets/%s/font/' % MOD_ID) and not n.endswith('/'))
+    if leftovers:
+        fail('%d file(s) from the old font route are still in the jar: %s'
+             % (len(leftovers), leftovers[:3]))
+    largest = 0
+    for image in images:
+        parts = image[len(prefix):].split('/')
+        if len(parts) != 2 or not parts[1].endswith('.png') or len(parts[1]) <= 4:
+            fail('%s is not textures/title/<namespace>/<name>.png, so the mod cannot '
+                 'derive a biome id from it' % image)
             continue
-
-        for provider in data.get('providers', []):
-            kind = provider.get('type')
-            if kind not in VALID_PROVIDERS:
-                fail('%s uses provider type %r; vanilla accepts only %s and REJECTS the '
-                     'namespaced form' % (font, kind, sorted(VALID_PROVIDERS)))
-            if kind != 'bitmap':
-                continue
-
-            ascent = provider.get('ascent')
-            height = provider.get('height', 8)
-            if ascent is None:
-                fail('%s declares no ascent' % font)
-            elif ascent > height:
-                fail('%s has ascent %d above height %d, which vanilla rejects'
-                     % (font, ascent, height))
-
-            ref = provider.get('file', '')
-            if ':' not in ref:
-                fail('%s has an unnamespaced file %r' % (font, ref))
-                continue
-            ns, path = ref.split(':', 1)
-            texture = 'assets/%s/textures/%s' % (ns, path)
-            if texture not in names:
-                fail('%s points at %s, which is not in the jar' % (font, ref))
-                continue
-            size = png_size(zf.read(texture))
-            if size is None:
-                fail('%s is not a PNG' % texture)
-                continue
-            if max(size) > MAX_GLYPH_PX:
-                fail('%s is %dx%d, over the %d px font sheet - it would be dropped with '
-                     'no log line' % (texture, size[0], size[1], MAX_GLYPH_PX))
-                continue
-
-            # THE SEAM. Vanilla draws a bitmap glyph `pixelWidth * scale` wide and then
-            # advances `round(actualWidth * scale) + 1`, with scale = height/imageHeight;
-            # the font's -1 space provider cancels the +1, so whatever `round` moved is
-            # left as a gap between the strips - a vertical tear straight through the
-            # letters - or as an overlap. The check is on the imageHeight, because that
-            # is what makes `stripWidth * scale` land on a whole number.
-            #
-            # `actualWidth` is assumed equal to the strip width here, which holds
-            # because a strip is only ever cut where the artwork reaches both of its
-            # edges. Proving it outright would mean decoding the PNG's pixels, which
-            # this check deliberately does not do.
-            w, h = size
-            if h % height:
-                fail('%s is %d px tall, which is not a whole number of the %d font units '
-                     'it declares, so every seam in this title leaks a fraction of a unit'
-                     % (texture, h, height))
-            elif w % (h // height):
-                fail('%s is %d px wide, which is not a whole number of font units at an '
-                     'oversample of %d, so its seam does not close'
-                     % (texture, w, h // height))
-
-    # A title is several glyphs, so the count to check is BITMAP PROVIDERS against
-    # textures, not fonts against textures. Anything left over is a strip from an
-    # earlier run that nothing points at - dead weight in the jar that no other check
-    # would notice.
-    textures = {n for n in names
-                if n.startswith('assets/%s/textures/title/' % MOD_ID) and n.endswith('.png')}
-    referenced = set()
-    for font in fonts:
-        try:
-            data = json.loads(zf.read(font))
-        except Exception:
+        size = png_size(zf.read(image))
+        if size is None:
+            fail('%s is not a PNG' % image)
             continue
-        for provider in data.get('providers', []):
-            ref = provider.get('file')
-            if provider.get('type') == 'bitmap' and ref and ':' in ref:
-                ns, path = ref.split(':', 1)
-                referenced.add('assets/%s/textures/%s' % (ns, path))
-    print('   %-10s %3d titles, %3d strips, %3d textures'
-          % (loader, len(fonts), len(referenced), len(textures)))
-    orphans = sorted(textures - referenced)
-    if orphans:
-        fail('%d texture(s) no font points at, so they are stale: %s'
-             % (len(orphans), orphans[:3]))
+        if max(size) > MAX_TEXTURE_PX:
+            fail('%s is %dx%d, over the %d px texture ceiling'
+                 % (image, size[0], size[1], MAX_TEXTURE_PX))
+        if size[1] < MIN_IMAGE_HEIGHT:
+            fail('%s is only %d px tall, so it is magnified on every screen'
+                 % (image, size[1]))
+        largest = max(largest, max(size))
+    print('   %-10s %3d title images, largest side %d px' % (loader, len(images), largest))
 
 
 def config_classes_match(jars, problems):

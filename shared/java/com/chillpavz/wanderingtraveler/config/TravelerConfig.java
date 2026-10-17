@@ -71,8 +71,8 @@ public final class TravelerConfig {
     public static int offsetY = 0;
 
     // ----------------------------------------------------------------------- size
-    /** The declared height of every title glyph, matching what the shipped fonts carry. */
-    public static final int ARTWORK_UNITS = 12;
+    /** The height every title image is drawn at, in GUI units, before these scales. */
+    public static final int ARTWORK_UNITS = com.chillpavz.wanderingtraveler.title.TitleImages.HEIGHT_UNITS;
     /** Drawn width, in font units, at or below which a title counts as short. */
     public static final int SHORT_MAX_UNITS = 85;
     /** Drawn width, in font units, above which a title counts as long. */
@@ -81,14 +81,14 @@ public final class TravelerConfig {
     /**
      * A title's on-screen size as a percentage, in three bands by NAME LENGTH.
      *
-     * <p>Every title is drawn from a glyph {@link #ARTWORK_UNITS} font units tall, so
+     * <p>Every title is drawn {@link #ARTWORK_UNITS} GUI units tall, so
      * these are the only thing deciding how big it lands: 300 is 36 GUI-scaled pixels.
      * Three bands rather than one because a long name at the scale that suits a short
      * one runs into the screen edge, and being cut off - or silently shrunk by the
      * fallback below - is worse than being drawn a little smaller on purpose.
      *
      * <p>The bands are measured in font units of drawn width, which is the number the
-     * renderer already has. Across the 66 shipped titles that puts 27 in short (River
+     * renderer already has. Across the shipped titles (66 when this was measured) that puts 27 in short (River
      * at 37 units up to Warm Ocean at 85), 28 in medium, and 11 in long (Windswept
      * Forest at 121 up to Windswept Gravelly Hills at 172).
      */
@@ -118,8 +118,8 @@ public final class TravelerConfig {
     /**
      * The colour of a plain-text title, as 0xRRGGBB.
      *
-     * <p>Plain text only. A full-colour glyph is MULTIPLIED by the text colour, so
-     * tinting the artwork any other colour simply darkens it - which is invisible in a
+     * <p>Plain text only. The artwork is MULTIPLIED by any colour it is drawn with, so
+     * tinting it any other colour simply darkens it - which is invisible in a
      * screenshot taken at the default and looks like a broken palette to anyone who
      * changes it. The artwork is forced to white in the renderer for that reason.
      */

@@ -5,6 +5,7 @@ import com.chillpavz.wanderingtraveler.config.TravelerConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.network.chat.Component;
 import com.mojang.blaze3d.vertex.PoseStack;
 
@@ -86,10 +87,8 @@ public final class TitleRenderer {
 
         // Both the artwork and the text are measured in FONT UNITS here, so the anchor
         // and the size bands work on the same numbers whichever path is in play.
-        int width = font.width(text);
-        // A title glyph is authored with ascent 7, the same as vanilla's own font, which
-        // puts its top exactly on the draw y.
-        int height = artwork != null ? artwork.height() : font.lineHeight;
+        int width = artwork != null ? artwork.widthUnits() : font.width(text);
+        int height = artwork != null ? TitleImages.HEIGHT_UNITS : font.lineHeight;
 
         // THE SIZE BAND IS CHOSEN BY DRAWN WIDTH, which is the length of the name in the
         // only unit that matters on screen. Plain text takes one scale for every name:
@@ -117,22 +116,26 @@ public final class TitleRenderer {
         int x = TravelerConfig.anchor.x(screenW, boxW) + TravelerConfig.offsetX;
         int y = TravelerConfig.anchor.y(screenH, boxH) + TravelerConfig.offsetY;
 
-        // THE ARTWORK IS ALWAYS WHITE. A full-colour glyph is multiplied by the text
-        // colour, so the colour option can only ever darken it; it applies to the plain
-        // text path, which is greyscale and takes a tint properly.
         int opacity = opacityByte << 24;
-        int rgb = artwork != null ? 0xFFFFFF : TravelerConfig.textColor & 0xFFFFFF;
+        int rgb = TravelerConfig.textColor & 0xFFFFFF;
 
-        // No shadow behind the artwork either - it draws its own, in the art. The
-        // incumbent's "black boxes" report turned out to be vanilla's Accessibility ->
-        // Text Background setting interacting with its draw path, and drawing plain
-        // glyphs cannot reproduce it.
+        // No shadow behind the artwork - it draws its own, in the art.
         boolean shadow = artwork == null && TravelerConfig.textShadow;
 
         PoseStack pose = gfx.pose();
         pose.pushPose();
         pose.translate(x, y, 0.0F);
         pose.scale(scale, scale, 1.0F);
+        if (artwork != null) {
+            // One source pixel per unit inside the pose, so the whole image is one quad.
+            // THE ARTWORK IS ALWAYS WHITE: only the alpha is the fade, because a colour
+            // would only darken it.
+            float unit = TitleImages.HEIGHT_UNITS / (float) artwork.height();
+            pose.scale(unit, unit, 1.0F);
+            drawImage(gfx, artwork, opacityByte / 255.0F);
+            pose.popPose();
+            return;
+        }
         if (shadow) {
             // DRAWN BY HAND rather than through the draw call's shadow flag, because
             // that flag picks the colour itself - ARGB.scaleRGB(colour, 0.25f) - and
@@ -143,5 +146,21 @@ public final class TitleRenderer {
         }
         gfx.drawString(font, text, 0, 0, opacity | rgb, false);
         pose.popPose();
+    }
+
+    /**
+     * One blit of the whole image. This version's {@code blit} takes no colour, so the fade
+     * is {@code setColor}, which multiplies everything drawn until it is reset, and the
+     * image's own alpha needs blending switched on around it.
+     */
+    private static void drawImage(GuiGraphics gfx, TitleArt.Entry artwork, float alpha) {
+        int w = artwork.width();
+        int h = artwork.height();
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        gfx.setColor(1.0F, 1.0F, 1.0F, alpha);
+        gfx.blit(artwork.texture(), 0, 0, 0.0F, 0.0F, w, h, w, h);
+        gfx.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.disableBlend();
     }
 }

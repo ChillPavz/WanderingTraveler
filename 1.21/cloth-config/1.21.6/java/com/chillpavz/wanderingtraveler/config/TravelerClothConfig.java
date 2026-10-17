@@ -107,7 +107,7 @@ public class TravelerClothConfig implements ConfigData {
     @ConfigEntry.Gui.Tooltip(count = 2)
     public int sizePlainText = 150;
 
-    // Plain text only. A full-colour glyph is MULTIPLIED by the text colour, so these two
+    // Plain text only. The artwork is MULTIPLIED by any colour it is drawn with, so these two
     // cannot apply to the artwork: tinting it would only darken it, and it draws its own
     // shadow in the art.
     @ConfigEntry.Category("appearance")

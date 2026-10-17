@@ -513,9 +513,9 @@ public final class TitleTracker {
     private static void show(ResourceLocation subject, String translationKey, boolean forceText,
                              boolean dimension) {
         TitleArt.Entry artwork = forceText ? null : TitleArt.artworkFor(subject);
-        Component component = artwork != null
-                ? TitleArt.artworkComponent(artwork)
-                : TitleArt.plainText(translationKey, subject);
+        // The name travels with the title either way: it is what the plain-text fallback
+        // draws, and the artwork is drawn from the entry rather than from text.
+        Component component = TitleArt.plainText(translationKey, subject);
 
         // SUPPRESS ON THE DISPLAYED NAME, NOT THE ID. Chaotic biome borders re-trigger
         // constantly, and the incumbent's own landing fix for that was to compare the
