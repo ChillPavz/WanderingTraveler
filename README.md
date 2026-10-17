@@ -134,6 +134,10 @@ classes are compiled for the Java version Mojang requires (17 at 1.20.x, 21 at 1
 |---|---|
 | `shared/java/` | Code that is identical in every band: title timing, the config holder, the platform plumbing |
 | `shared/resources/` | The artwork, the icon and the translations, identical in every band |
+| `shared/loaders/<loader>/` | Files identical in every band of one loader: the platform helpers |
+| `shared/eras/<bands>/<modules>/` | Files identical in the bands named, joined by `+`, for the modules named the same way |
+| `shared/gradle/` | The script that adds those folders to each module of each band |
+| `1.20.1/fabric+forge/` | Files both 1.20.1 loaders share, which no other band does |
 | `<folder>/common/` | Shared code that differs by version: title discovery, the tracker, the renderer |
 | `<folder>/fabric/`, `neoforge/`, `forge/` | Loader entry points |
 | `1.21/<module>/src/<era>/` | What changes shape inside 1.21.x; `1.21-1.21.6` and `1.21.6-1.21.11` hold files two builds share |
