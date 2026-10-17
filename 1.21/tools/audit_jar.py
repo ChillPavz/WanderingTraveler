@@ -332,6 +332,14 @@ def cloth_sources():
                            'TravelerClothConfig.java')
         if os.path.isfile(src):
             found[era] = src
+    # Band 1.21.11's copy is the one 26.x also compiles, so it lives in shared/eras since Oct 2026.
+    eras = os.path.join(ROOT, '..', 'shared', 'eras')
+    for era in sorted(os.listdir(eras)) if os.path.isdir(eras) else []:
+        for module in sorted(os.listdir(os.path.join(eras, era))):
+            src = os.path.join(eras, era, module, 'java', 'com', 'chillpavz', 'wanderingtraveler',
+                               'config', 'TravelerClothConfig.java')
+            if os.path.isfile(src):
+                found[era] = src
     return found
 
 

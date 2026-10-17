@@ -3,6 +3,9 @@ plugins {
     id 'net.minecraftforge.gradle' version '[6.0.46,6.2)'
     id 'idea'
 }
+
+// The repository's narrower shared/ folders: per loader, and per group of bands (shared/eras).
+apply from: '../../shared/gradle/shared-sources.gradle'
 // mod_id, not mod_name: mod_name has a space in it and would produce a jar called
 // "Wandering Traveler-forge-...". This also matches what multiloader-common sets for
 // every other module.

@@ -438,8 +438,13 @@ def config_classes_match(jars, problems):
     for name in ('TravelerClothConfig.java', 'ClothCompat.java'):
         seen = {}
         for loader in jars:
+            # Since Oct 2026 both loaders compile ONE copy from fabric+forge/, so the
+            # two are identical by construction; a per-loader copy would still be read.
             src = os.path.join(ROOT, loader, 'src', 'main', 'java', 'com', 'chillpavz',
                                'wanderingtraveler', 'config', name)
+            if not os.path.exists(src):
+                src = os.path.join(ROOT, 'fabric+forge', 'src', 'main', 'java', 'com',
+                                   'chillpavz', 'wanderingtraveler', 'config', name)
             if os.path.exists(src):
                 seen[loader] = open(src, 'rb').read()
         if len(seen) != len(jars):
@@ -470,7 +475,7 @@ def config_annotations_match(problems):
         exactly over the value you are dragging to; the owner could not read the numbers
         they were trying to pick. Sliders carry their unit in the label instead.
     """
-    src = os.path.join(ROOT, 'fabric', 'src', 'main', 'java', 'com', 'chillpavz',
+    src = os.path.join(ROOT, 'fabric+forge', 'src', 'main', 'java', 'com', 'chillpavz',
                        'wanderingtraveler', 'config', 'TravelerClothConfig.java')
     lang = os.path.join(ROOT, '..', 'shared', 'resources', 'assets', MOD_ID,
                         'lang', 'en_us.json')

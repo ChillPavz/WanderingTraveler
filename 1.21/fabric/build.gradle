@@ -2,6 +2,9 @@ plugins {
     id 'multiloader-loader'
     id 'fabric-loom'
 }
+
+// The repository's narrower shared/ folders: per loader, and per group of bands (shared/eras).
+apply from: '../../shared/gradle/shared-sources.gradle'
 // ONE FABRIC JAR COVERS 1.21.6 THROUGH 1.21.11, because Loom remaps to intermediary and
 // the ResourceLocation to Identifier rename is invisible there. NeoForge and Forge run on
 // official names and stop at 1.21.10, so they keep the shared label.
