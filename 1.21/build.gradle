@@ -9,9 +9,6 @@ plugins {
 // Maven Central. Cloth's mod id is `cloth_config` and it PROVIDES `cloth-config2`,
 // which is why the Fabric metadata depends on one spelling and the loader TOMLs on
 // the other.
-//
-// At 1.21.11 official cloth has NO Forge build, so the Forge module pulls the same
-// coordinates from the unofficial cloth-config-forge instead; see forge/build.gradle.
 allprojects {
     repositories {
         maven {

@@ -54,15 +54,11 @@ ENUM_LABELS = {
 ENTRYPOINTS = {
     'fabric': 'com.chillpavz.wanderingtraveler.WanderingTravelerFabric',
     'neoforge': 'com.chillpavz.wanderingtraveler.WanderingTravelerNeoForge',
-    'forge': 'com.chillpavz.wanderingtraveler.WanderingTravelerForge',
 }
 
-# The loader metadata file each module ships. Forge is `mods.toml`, NeoForge is
-# `neoforge.mods.toml`, and putting NeoForge's `type = "required"` syntax in Forge's file
-# makes Forge reject the jar outright.
+# The loader metadata file each module ships.
 TOML = {
     'neoforge': 'META-INF/neoforge.mods.toml',
-    'forge': 'META-INF/mods.toml',
 }
 
 
@@ -155,19 +151,6 @@ def audit(jar_path, loader, problems):
         for line in toml.splitlines():
             if '${' in line:
                 fail('%s has an unexpanded placeholder: %s' % (name, line.strip()))
-        # Forge uses `mandatory = true`; NeoForge's `type = "required"` parses as an
-        # unknown field and Forge refuses the jar with "Missing required field mandatory".
-        #
-        # COMMENTS ARE STRIPPED FIRST. The first version of this check searched the whole
-        # file and matched the comment in mods.toml that explains this very rule, which is
-        # the "anchor on the construct, never on a bare string" trap in its purest form.
-        if loader == 'forge':
-            live = [l.split('#', 1)[0] for l in toml.splitlines()]
-            if any('type' in l and 'required' in l for l in live):
-                fail('mods.toml uses the NeoForge dependency syntax; Forge needs '
-                     'mandatory = true, not type = required')
-            if not any('mandatory' in l for l in live):
-                fail('mods.toml declares no mandatory field on its dependencies')
         svc = 'META-INF/services/com.chillpavz.wanderingtraveler.platform.services.IPlatformHelper'
         if svc not in names:
             fail('the platform service file is missing or still named after the template')
@@ -441,7 +424,7 @@ def main():
     problems = []
     found = 0
     jars = {}
-    for loader in ('fabric', 'neoforge', 'forge'):
+    for loader in ('fabric', 'neoforge'):
         # Each band builds only the loaders it can run (see versions/); build/libs holds
         # every band built so far, side by side, so a loader can have several jars.
         if not os.path.isdir(os.path.join(ROOT, loader, 'build', 'libs')):

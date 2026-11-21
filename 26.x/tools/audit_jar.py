@@ -401,7 +401,7 @@ def config_annotations_match(problems):
         they were trying to pick. Sliders carry their unit in the label instead.
     """
     # One source for every loader since Oct 2026, in the shared era folder 1.21.11 also uses.
-    src = os.path.join(ROOT, '..', 'shared', 'eras', '1.21.11+26.x', 'fabric+forge+neoforge',
+    src = os.path.join(ROOT, '..', 'shared', 'eras', '1.21.11+26.x', 'fabric+neoforge',
                        'java', 'com', 'chillpavz', 'wanderingtraveler', 'config',
                        'TravelerClothConfig.java')
     lang = os.path.join(ROOT, '..', 'shared', 'resources', 'assets', MOD_ID,

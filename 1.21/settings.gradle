@@ -26,17 +26,6 @@ pluginManagement {
                 includeGroupAndSubgroups("org.spongepowered")
             }
         }
-        exclusiveContent {
-            forRepository {
-                maven {
-                    name = 'Forge'
-                    url = uri('https://maven.minecraftforge.net')
-                }
-            }
-            filter {
-                includeGroupAndSubgroups('net.minecraftforge')
-            }
-        }
     }
 }
 
@@ -44,13 +33,12 @@ plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
 }
 
-// ONE FOLDER, THREE BUILDS. -Pmc picks a file in versions/: everything that changes with
+// ONE FOLDER, TWO BUILDS. -Pmc picks a file in versions/: everything that changes with
 // Minecraft (versions, ranges, jar labels, which loaders are built, which era source folders
 // are compiled) lives there and nowhere else, so no stale value can shadow it.
-//   ./gradlew build -Pmc=1.21      Fabric + NeoForge 1.21-1.21.5, Forge 1.21.1
-//   ./gradlew build -Pmc=1.21.6    Fabric 1.21.6-1.21.11, NeoForge 1.21.6-1.21.10
-//   ./gradlew build -Pmc=1.21.11   NeoForge + Forge 1.21.11
-// tools/build_all.py runs all three.
+//   ./gradlew build -Pmc=1.21      Fabric + NeoForge 1.21-1.21.1
+//   ./gradlew build -Pmc=1.21.11   Fabric + NeoForge 1.21.11
+// tools/build_all.py runs both.
 def band = providers.gradleProperty('mc').getOrElse('1.21.11')
 def bandFile = file("versions/${band}.properties")
 if (!bandFile.exists()) {
@@ -68,6 +56,6 @@ logger.lifecycle("Wandering Traveler, Minecraft band ${band} (${bandProps.minecr
 // This should match the folder name of the project, or else IDEA may complain (see https://youtrack.jetbrains.com/issue/IDEA-317606)
 rootProject.name = 'MultiLoader-Template'
 include('common')
-// A band builds only the loaders that can run there: Forge has no HUD overlay API at
-// 1.21.6-1.21.10, and the 1.21.6 Fabric jar already covers 1.21.11.
+// A band builds the loaders its versions file lists: Fabric and NeoForge in both bands.
+// Forge on 1.21.x retired after 1.6.0 (the last tree with it is the tag archive/1.21.x-forge).
 bandProps.loaders.split(',').collect { it.trim() }.findAll { it }.each { include(it) }

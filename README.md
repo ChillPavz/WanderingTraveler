@@ -28,14 +28,15 @@ No mixins, at all. Nothing is injected into another mod's code or into a Minecra
 | | Fabric | NeoForge | Forge |
 |---|---|---|---|
 | 26.1 to 26.3 | yes | yes | |
-| 1.21.11 | yes | yes | yes |
-| 1.21.6 to 1.21.10 | yes | yes | |
-| 1.21.2 to 1.21.5 | yes | yes | |
-| 1.21 and 1.21.1 | yes | yes | 1.21.1 only |
+| 1.21.11 | yes | yes | |
+| 1.21 and 1.21.1 | yes | yes | |
 | 1.20 and 1.20.1 | yes | 1.20.1 | yes |
 
 NeoForge at 1.20.1 is a fork of Forge 47 that still uses the `net.minecraftforge` packages, so it
 runs the Forge build.
+
+Minecraft 1.21.2 to 1.21.10, and Forge on 1.21.1 and 1.21.11, get no further updates: their last
+release is 1.6.0, which stays available.
 
 ## Dependencies
 
@@ -43,18 +44,14 @@ runs the Forge build.
 |---|---|---|---|
 | Fabric API | required | | |
 | Cloth Config | required, optional at 1.20.x | required, optional at 1.20.1 | optional |
-| Cloth Config Forge | | | optional, the Forge build of Cloth at 1.21.11 |
 | Mod Menu | optional, adds the Config button | | |
 
 Nothing is bundled. Cloth Config is LGPL-3.0 and stays a separate download for that reason.
 NeoForge and Forge both supply their own Config button, so Mod Menu is only useful on Fabric.
 
 **Without Cloth Config, where it is optional, the titles run on their default settings**, the
-settings file is not written, and the Config button goes nowhere. Cloth is optional on every Forge
-build because no single Cloth project covers them all: official Cloth Config ships Forge builds at
-1.20.1 and 1.21.1, and at 1.21.11 the Forge build is the separate `cloth-config-forge` project, with
-the same mod id. It is optional on everything at 1.20.x because Cloth publishes nothing tagged for
-NeoForge there.
+settings file is not written, and the Config button goes nowhere. It is optional on everything at
+1.20.x because Cloth publishes nothing tagged for NeoForge there.
 
 ## Adding titles for other biomes
 
@@ -110,7 +107,7 @@ builds the same mod version.
 | Folder | Builds | Minecraft | Gradle runs on |
 |---|---|---|---|
 | `26.x` | Fabric, NeoForge | 26.1 to 26.3 | JDK 25 |
-| `1.21` | four builds, one per band, see below | 1.21 to 1.21.11 | JDK 24 |
+| `1.21` | Fabric, NeoForge, two bands, see below | 1.21, 1.21.1 and 1.21.11 | JDK 24 |
 | `1.20.1` | Fabric, Forge | 1.20 and 1.20.1 | JDK 22 |
 
 `1.21` builds the whole 1.21.x line from one source tree. `-Pmc` picks a file in `1.21/versions/`
@@ -120,11 +117,7 @@ era source folders it compiles:
 | `-Pmc` | Jars | Serves |
 |---|---|---|
 | `1.21` | Fabric, NeoForge | 1.21 to 1.21.1 |
-| `1.21` | Forge | 1.21.1 |
-| `1.21.2` | Fabric, NeoForge | 1.21.2 to 1.21.5 |
-| `1.21.6` | Fabric | 1.21.6 to 1.21.11 |
-| `1.21.6` | NeoForge | 1.21.6 to 1.21.10 |
-| `1.21.11` | NeoForge, Forge | 1.21.11 |
+| `1.21.11` | Fabric, NeoForge | 1.21.11 |
 
 A jar is named after the newest version it serves, so all of them sit side by side in each loader's
 `build/libs`. The JDK is what Gradle and its plugins need to run, not what the jar targets: the
@@ -140,7 +133,7 @@ classes are compiled for the Java version Mojang requires (17 at 1.20.x, 21 at 1
 | `1.20.1/fabric+forge/` | Files both 1.20.1 loaders share, which no other band does |
 | `<folder>/common/` | Shared code that differs by version: title discovery, the tracker, the renderer |
 | `<folder>/fabric/`, `neoforge/`, `forge/` | Loader entry points |
-| `1.21/<module>/src/<era>/` | What changes shape inside 1.21.x; `1.21-1.21.6` and `1.21.6-1.21.11` hold files two builds share |
+| `1.21/<module>/src/<era>/` | What changes shape inside 1.21.x, one folder per band |
 | `1.21/cloth-config/<era>/` | The Cloth Config data class, one source per era, compiled into every loader |
 | `<folder>/tools/audit_jar.py` | The jar audit described below |
 

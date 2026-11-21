@@ -14,8 +14,8 @@ java {
 }
 
 // ERA SOURCE FOLDERS. What changes shape inside the 1.21.x line lives in src/<era>/java and
-// src/<era>/resources; the band's versions file lists the eras it compiles, e.g. 1.21.6 takes
-// "1.21.6", "1.21-1.21.6" and "1.21.6-1.21.11". An era a module does not have is simply absent.
+// src/<era>/resources; the band's versions file lists the eras it compiles, e.g. 1.21.11 takes
+// "1.21.11". An era a module does not have is simply absent.
 eras.split(',').collect { it.trim() }.findAll { it }.each { era ->
     sourceSets.main.java.srcDir("src/${era}/java")
     sourceSets.main.resources.srcDir("src/${era}/resources")
@@ -105,8 +105,6 @@ processResources {
             'description'                  : project.description,
             'neoforge_version'             : neoforge_version,
             'neoforge_loader_version_range': neoforge_loader_version_range,
-            "forge_version": forge_version,
-            "forge_loader_version_range": forge_loader_version_range,
             'credits'                      : credits,
             'java_version'                 : java_version,
             'fabric_minecraft_version_range': fabric_minecraft_version_range,
@@ -114,19 +112,14 @@ processResources {
             'cloth_config_version'         : cloth_config_version,
             'mod_menu_version'             : mod_menu_version,
             'pack_format'                  : pack_format,
-            'forge_version_range'          : forge_version_range,
-            'minecraft_version_label'      : minecraft_version_label,
-            'fabric_minecraft_version_label': fabric_minecraft_version_label,
-            'forge_minecraft_version_range': forge_minecraft_version_range,
-            'forge_minecraft_version_label': forge_minecraft_version_label,
-            'forge_minecraft_version'      : forge_minecraft_version
+            'minecraft_version_label'      : minecraft_version_label
     ]
 
     var jsonExpandProps = expandProps.collectEntries {
         key, value -> [(key): value instanceof String ? value.replace("\n", "\\n") : value]
     }
 
-    filesMatching(['META-INF/mods.toml', 'META-INF/neoforge.mods.toml']) {
+    filesMatching(['META-INF/neoforge.mods.toml']) {
         expand expandProps
     }
 
